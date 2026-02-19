@@ -88,7 +88,7 @@ export function Upload({ onFileAccepted }: UploadProps) {
         ? 'border-emerald-400'
         : state === 'invalid'
           ? 'border-red-400'
-          : 'border-slate-600';
+          : 'border-slate-300';
 
   return (
     <div
@@ -98,7 +98,7 @@ export function Upload({ onFileAccepted }: UploadProps) {
       onClick={() => inputRef.current?.click()}
       className={`
         flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed
-        p-12 transition-colors cursor-pointer bg-navy-800/50 hover:bg-navy-700/50
+        p-12 transition-colors cursor-pointer bg-white hover:bg-slate-50
         ${borderColor}
       `}
     >
@@ -115,40 +115,40 @@ export function Upload({ onFileAccepted }: UploadProps) {
           <svg className="h-10 w-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
           </svg>
-          <p className="text-slate-400 text-sm">
+          <p className="text-slate-500 text-sm">
             {state === 'dragging' ? 'Drop your file here' : 'Drag & drop a .tfstate file, or click to browse'}
           </p>
         </>
       ) : state === 'ready' && file ? (
         <>
           <div className="text-center">
-            <p className="text-slate-200 font-medium">{file.name}</p>
-            <p className="text-slate-400 text-xs mt-1">{formatSize(file.size)}</p>
+            <p className="text-slate-800 font-medium">{file.name}</p>
+            <p className="text-slate-500 text-xs mt-1">{formatSize(file.size)}</p>
           </div>
           <div className="flex gap-3" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={reset}
-              className="px-4 py-2 text-sm rounded-md border border-slate-600 text-slate-300 hover:bg-navy-700 transition-colors"
+              className="px-4 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100 transition-colors"
             >
               Clear
             </button>
             <button
               onClick={() => onFileAccepted(file)}
-              className="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-500 transition-colors font-medium"
+              className="px-4 py-2 text-sm rounded-md bg-[#ED7100] text-white hover:bg-[#d96600] transition-colors font-medium"
             >
-              Parse →
+              Parse
             </button>
           </div>
         </>
       ) : (
         <>
-          <p className="text-red-400 text-sm text-center">{error}</p>
+          <p className="text-red-600 text-sm text-center">{error}</p>
           <button
             onClick={(e) => {
               e.stopPropagation();
               reset();
             }}
-            className="px-4 py-2 text-sm rounded-md border border-slate-600 text-slate-300 hover:bg-navy-700 transition-colors"
+            className="px-4 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100 transition-colors"
           >
             Try again
           </button>

@@ -2,39 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
-/* React Flow dark theme overrides */
+/* React Flow light theme */
 .react-flow__background {
-  background-color: #0a0f1e;
+  background-color: #f8fafc;
 }
 
 .react-flow__controls button {
-  background-color: #111b33;
-  border-color: #1a2647;
-  color: #94a3b8;
+  background-color: white;
+  border-color: #e2e8f0;
+  color: #475569;
 }
 
 .react-flow__controls button:hover {
-  background-color: #1a2647;
+  background-color: #f1f5f9;
 }
 
 .react-flow__minimap {
-  background-color: #0d1426;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
 }
 
 .react-flow__minimap-mask {
-  fill: rgba(10, 15, 30, 0.6);
+  fill: rgba(248, 250, 252, 0.7);
 }
 
 .react-flow__edge-path {
-  stroke: #475569;
+  stroke: #94a3b8;
+  stroke-dasharray: 6 3;
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke: #94a3b8;
+  stroke: #475569;
 }
 
-/* Node card base style */
+.react-flow__edge-text {
+  font-size: 10px;
+  fill: #64748b;
+}
+
+/* AWS-style resource card */
 .node-card {
-  @apply flex flex-col gap-1 px-3 py-2 rounded-md border text-sm font-medium
-         bg-navy-800 text-slate-200 cursor-pointer select-none;
+  @apply flex flex-col gap-1 px-3 py-2.5 rounded-md border-l-4 border border-slate-200
+         bg-white text-sm shadow-sm cursor-pointer select-none;
+}
+
+.node-card:hover {
+  @apply shadow-md;
 }

@@ -28,7 +28,7 @@ export default function Home() {
   if (state.view === 'loading') {
     return (
       <main className="flex min-h-screen items-center justify-center">
-        <p className="text-slate-400 animate-pulse">Parsing infrastructure...</p>
+        <p className="text-slate-500 animate-pulse">Parsing infrastructure...</p>
       </main>
     );
   }
@@ -36,10 +36,10 @@ export default function Home() {
   if (state.view === 'error') {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4">
-        <p className="text-red-400">{state.message}</p>
+        <p className="text-red-600">{state.message}</p>
         <button
           onClick={() => setState({ view: 'upload' })}
-          className="px-4 py-2 text-sm rounded-md border border-slate-600 text-slate-300 hover:bg-navy-700 transition-colors"
+          className="px-4 py-2 text-sm rounded-md border border-slate-300 text-slate-600 hover:bg-slate-100 transition-colors"
         >
           Try again
         </button>
@@ -61,12 +61,11 @@ export default function Home() {
             }
           />
         </div>
-        {/* Sidebar placeholder — Step 6 */}
-        <div className="w-80 border-l border-slate-700 bg-navy-800 p-4 overflow-y-auto">
+        <div className="w-80 border-l border-slate-200 bg-white p-4 overflow-y-auto shadow-sm">
           {state.selectedNodeId ? (
             <div>
-              <p className="text-sm text-slate-400">Selected:</p>
-              <p className="text-slate-200 font-medium">{state.selectedNodeId}</p>
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Selected</p>
+              <p className="text-slate-800 font-medium mt-1">{state.selectedNodeId}</p>
             </div>
           ) : (
             <p className="text-sm text-slate-400">Click a node to inspect it</p>
@@ -79,8 +78,8 @@ export default function Home() {
   // Default: upload view
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
-      <h1 className="text-4xl font-bold tracking-tight text-slate-100">AWSArchitect</h1>
-      <p className="text-slate-400 text-sm">Upload a Terraform state file to visualize your infrastructure</p>
+      <h1 className="text-4xl font-bold tracking-tight text-slate-900">AWSArchitect</h1>
+      <p className="text-slate-500 text-sm">Upload a Terraform state file to visualize your infrastructure</p>
       <div className="w-full max-w-lg">
         <Upload onFileAccepted={handleFileAccepted} />
       </div>

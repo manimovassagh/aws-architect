@@ -1,16 +1,19 @@
 import { Handle, Position, type NodeProps } from 'reactflow';
 import type { GraphNodeData } from '@awsarchitect/shared';
+import { NatIcon } from './icons/AwsIcons';
 
 export function NatNode({ data, selected }: NodeProps<GraphNodeData>) {
   return (
-    <div className={`node-card border-teal-500 ${selected ? 'ring-2 ring-white' : ''}`}>
+    <div className={`node-card border-l-[#8C4FFF] ${selected ? 'ring-2 ring-[#8C4FFF]/40' : ''}`}>
       <div className="flex items-center gap-2">
-        <span className="text-base">🔀</span>
-        <span className="truncate">{data.label}</span>
+        <NatIcon className="h-7 w-7 shrink-0" />
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-slate-800 truncate">{data.label}</p>
+          <p className="text-[11px] font-medium text-[#8C4FFF]">NAT Gateway</p>
+        </div>
       </div>
-      <span className="text-xs text-slate-400">NAT Gateway</span>
-      <Handle type="target" position={Position.Left} className="!bg-teal-400" />
-      <Handle type="source" position={Position.Right} className="!bg-teal-400" />
+      <Handle type="target" position={Position.Left} className="!bg-[#8C4FFF]" />
+      <Handle type="source" position={Position.Right} className="!bg-[#8C4FFF]" />
     </div>
   );
 }

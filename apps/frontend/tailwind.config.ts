@@ -9,11 +9,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        navy: {
-          900: '#0a0f1e',
-          800: '#0d1426',
-          700: '#111b33',
-          600: '#1a2647',
+        aws: {
+          orange: '#ED7100',
+          blue: '#3B48CC',
+          green: '#3F8624',
+          'dark-green': '#1B660F',
+          purple: '#8C4FFF',
+          pink: '#E7157B',
+          red: '#DD344C',
+          teal: '#147EBA',
         },
       },
     },

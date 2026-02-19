@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -51,7 +52,23 @@ interface CanvasProps {
 
 export function Canvas({ graphNodes, graphEdges, onNodeSelect }: CanvasProps) {
   const [nodes, , onNodesChange] = useNodesState(graphNodes as Node<GraphNodeData>[]);
-  const [edges, , onEdgesChange] = useEdgesState(graphEdges as Edge[]);
+
+  // Add smoothstep type and label to edges for AWS-style dashed arrows
+  const styledEdges = useMemo(
+    () =>
+      graphEdges.map((e) => ({
+        ...e,
+        type: 'smoothstep',
+        style: { stroke: '#94a3b8', strokeDasharray: '6 3', strokeWidth: 1.5 },
+        labelStyle: { fontSize: 10, fill: '#64748b' },
+        labelBgStyle: { fill: '#f8fafc', fillOpacity: 0.9 },
+        labelBgPadding: [4, 2] as [number, number],
+        labelBgBorderRadius: 3,
+      })),
+    [graphEdges]
+  );
+
+  const [edges, , onEdgesChange] = useEdgesState(styledEdges as Edge[]);
 
   return (
     <ReactFlow
@@ -65,28 +82,33 @@ export function Canvas({ graphNodes, graphEdges, onNodeSelect }: CanvasProps) {
       fitView
       minZoom={0.1}
       maxZoom={2}
-      defaultEdgeOptions={{ animated: false, style: { stroke: '#475569' } }}
+      defaultEdgeOptions={{
+        animated: false,
+        type: 'smoothstep',
+        style: { stroke: '#94a3b8', strokeDasharray: '6 3', strokeWidth: 1.5 },
+      }}
     >
-      <Background color="#1e293b" gap={20} size={1} />
-      <Controls className="!bg-navy-800 !border-navy-600" />
+      <Background color="#cbd5e1" gap={20} size={1} />
+      <Controls />
       <MiniMap
         nodeColor={(node) => {
           switch (node.type) {
-            case 'vpcNode':            return '#3b82f6';
-            case 'subnetNode':         return '#10b981';
-            case 'ec2Node':            return '#f59e0b';
-            case 'rdsNode':            return '#a855f7';
-            case 's3Node':             return '#ec4899';
-            case 'lambdaNode':         return '#f97316';
-            case 'lbNode':             return '#06b6d4';
-            case 'securityGroupNode':  return '#eab308';
-            case 'igwNode':            return '#0ea5e9';
-            case 'natNode':            return '#14b8a6';
-            case 'eipNode':            return '#f43f5e';
-            default:                   return '#64748b';
+            case 'vpcNode':            return '#1B660F';
+            case 'subnetNode':         return '#147EBA';
+            case 'ec2Node':            return '#ED7100';
+            case 'rdsNode':            return '#3B48CC';
+            case 's3Node':             return '#3F8624';
+            case 'lambdaNode':         return '#ED7100';
+            case 'lbNode':             return '#8C4FFF';
+            case 'securityGroupNode':  return '#DD344C';
+            case 'igwNode':            return '#8C4FFF';
+            case 'natNode':            return '#8C4FFF';
+            case 'eipNode':            return '#ED7100';
+            case 'routeTableNode':     return '#8C4FFF';
+            default:                   return '#7B8794';
           }
         }}
-        maskColor="rgba(10, 15, 30, 0.7)"
+        maskColor="rgba(248, 250, 252, 0.7)"
       />
     </ReactFlow>
   );
