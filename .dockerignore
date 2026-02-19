@@ -1,0 +1,15 @@
+node_modules
+.next
+dist
+.git
+.github
+.claude
+.playwright-mcp
+*.log
+.DS_Store
+.env
+.env.*
+coverage
+.cache
+.turbo
+test

@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint (backend)
+        run: npm run lint --workspace=apps/backend
+
+      - name: Lint (frontend)
+        run: npm run lint --workspace=apps/frontend
+
+      - name: Build shared
+        run: npm run build --workspace=packages/shared
+
+      - name: Build backend
+        run: npm run build --workspace=apps/backend
+
+      - name: Build frontend
+        run: npm run build --workspace=apps/frontend
+
+      - name: Smoke test
+        run: npx tsx apps/backend/src/scripts/test-parse.ts
