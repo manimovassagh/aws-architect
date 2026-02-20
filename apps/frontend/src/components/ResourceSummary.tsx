@@ -42,7 +42,7 @@ export function ResourceSummary({ resources, hiddenTypes, onToggleType }: Resour
     : resources.length;
 
   return (
-    <div className="absolute top-3 left-3 z-10 flex items-center gap-1 rounded-lg bg-white/90 backdrop-blur-sm border border-slate-200 px-3 py-1.5 shadow-sm">
+    <div className="absolute top-3 left-3 z-10 flex items-center gap-1 rounded-lg bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 px-3 py-1.5 shadow-sm">
       <span className="text-xs font-medium text-slate-400 mr-1">{visibleCount} resources</span>
       <span className="text-slate-200">|</span>
       {entries.map(([type, count]) => {
@@ -59,7 +59,7 @@ export function ResourceSummary({ resources, hiddenTypes, onToggleType }: Resour
             title={`${isHidden ? 'Show' : 'Hide'} ${config.label} (${count})`}
           >
             <Icon className="h-4 w-4" />
-            <span className="text-xs font-medium text-slate-600">{count}</span>
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{count}</span>
           </button>
         );
       })}

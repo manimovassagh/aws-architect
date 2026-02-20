@@ -94,7 +94,7 @@ export function NodeDetailPanel({ resource, edges, resources, onClose, onSelectR
         <div className="flex items-center gap-3 min-w-0">
           <Icon className="h-10 w-10 shrink-0" />
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-slate-800 truncate">{resource.displayName}</h2>
+            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 truncate">{resource.displayName}</h2>
             <p className="text-sm font-medium" style={{ color: meta.color }}>{meta.label}</p>
           </div>
         </div>
@@ -110,10 +110,10 @@ export function NodeDetailPanel({ resource, edges, resources, onClose, onSelectR
       </div>
 
       {/* Terraform ID */}
-      <div className="mb-4 px-3 py-2 bg-slate-50 rounded-lg">
+      <div className="mb-4 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
         <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Terraform ID</p>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <p className="text-sm text-slate-600 font-mono truncate flex-1">{resource.id}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300 font-mono truncate flex-1">{resource.id}</p>
           <button
             onClick={() => {
               navigator.clipboard.writeText(resource.id);
@@ -138,7 +138,7 @@ export function NodeDetailPanel({ resource, edges, resources, onClose, onSelectR
 
       {/* Region */}
       {resource.region && (
-        <div className="mb-4 px-3 py-2 bg-slate-50 rounded-lg">
+        <div className="mb-4 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
           <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Region</p>
           <p className="text-sm text-slate-600 mt-0.5">{resource.region}</p>
         </div>
@@ -150,9 +150,9 @@ export function NodeDetailPanel({ resource, edges, resources, onClose, onSelectR
           <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-2">Attributes</p>
           <div className="space-y-1.5">
             {displayAttrs.map(({ key, value }) => (
-              <div key={key} className="flex justify-between items-baseline gap-2 px-3 py-1.5 bg-slate-50 rounded">
+              <div key={key} className="flex justify-between items-baseline gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-700/50 rounded">
                 <span className="text-xs text-slate-500 shrink-0">{formatAttrKey(key)}</span>
-                <span className="text-xs text-slate-700 font-medium text-right truncate">{formatAttrValue(value)}</span>
+                <span className="text-xs text-slate-700 dark:text-slate-200 font-medium text-right truncate">{formatAttrValue(value)}</span>
               </div>
             ))}
           </div>
@@ -165,9 +165,9 @@ export function NodeDetailPanel({ resource, edges, resources, onClose, onSelectR
           <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider mb-2">Tags</p>
           <div className="space-y-1.5">
             {tags.map(([k, v]) => (
-              <div key={k} className="flex justify-between items-baseline gap-2 px-3 py-1.5 bg-slate-50 rounded">
+              <div key={k} className="flex justify-between items-baseline gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-700/50 rounded">
                 <span className="text-xs text-slate-500 shrink-0">{k}</span>
-                <span className="text-xs text-slate-700 font-medium text-right truncate">{v}</span>
+                <span className="text-xs text-slate-700 dark:text-slate-200 font-medium text-right truncate">{v}</span>
               </div>
             ))}
           </div>
@@ -188,7 +188,7 @@ export function NodeDetailPanel({ resource, edges, resources, onClose, onSelectR
                 <button
                   key={edge.id}
                   onClick={() => onSelectResource?.(otherResource!.id)}
-                  className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded w-full text-left hover:bg-slate-100 transition-colors cursor-pointer"
+                  className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-700/50 rounded w-full text-left hover:bg-slate-100 transition-colors cursor-pointer"
                 >
                   <OtherIcon className="h-5 w-5 shrink-0" />
                   <div className="min-w-0 flex-1">

@@ -50,3 +50,36 @@
 .node-card:hover {
   @apply shadow-md;
 }
+
+/* ─── Dark mode ─────────────────────────────────────────── */
+
+.dark .react-flow__background {
+  background-color: #0f172a;
+}
+
+.dark .react-flow__controls button {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+.dark .react-flow__controls button:hover {
+  background-color: #334155;
+}
+
+.dark .react-flow__minimap {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+.dark .react-flow__minimap-mask {
+  fill: rgba(15, 23, 42, 0.7);
+}
+
+.dark .node-card {
+  @apply bg-slate-800 border-slate-700 text-slate-200;
+}
+
+.dark .node-card:hover {
+  @apply shadow-lg shadow-black/20;
+}
