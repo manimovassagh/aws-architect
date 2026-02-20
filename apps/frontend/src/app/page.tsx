@@ -1,12 +1,12 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ParseResponse } from '@awsarchitect/shared';
 import { Upload, type UploadMode } from '@/components/Upload';
 import { Canvas } from '@/components/Canvas';
 import { NodeDetailPanel } from '@/components/NodeDetailPanel';
 import { ResourceSummary } from '@/components/ResourceSummary';
-import { SearchBar } from '@/components/SearchBar';
+import { SearchBar, type SearchBarHandle } from '@/components/SearchBar';
 import { parseFile, parseHcl } from '@/lib/api';
 
 type AppState =
@@ -20,6 +20,28 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [uploadMode, setUploadMode] = useState<UploadMode>('tfstate');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchBarRef = useRef<SearchBarHandle>(null);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Cmd/Ctrl+K → focus search bar
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchBarRef.current?.focus();
+      }
+      // Escape → clear search, deselect node, close panel
+      if (e.key === 'Escape') {
+        searchBarRef.current?.clear();
+        setSearchQuery('');
+        setState((prev) =>
+          prev.view === 'canvas' ? { ...prev, selectedNodeId: null } : prev
+        );
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   async function handleFileAccepted(file: File) {
     setState({ view: 'loading' });
@@ -115,7 +137,7 @@ export default function Home() {
         <div className="flex flex-1 min-h-0">
           <div className="flex-1 relative">
             <ResourceSummary resources={state.data.resources} />
-            <SearchBar onSearch={setSearchQuery} />
+            <SearchBar ref={searchBarRef} onSearch={setSearchQuery} />
             {/* Upload new file button */}
             <button
               onClick={handleQuickUpload}

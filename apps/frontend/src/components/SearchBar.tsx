@@ -1,13 +1,27 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
 }
 
-export function SearchBar({ onSearch }: SearchBarProps) {
+export interface SearchBarHandle {
+  focus: () => void;
+  clear: () => void;
+}
+
+export const SearchBar = forwardRef<SearchBarHandle, SearchBarProps>(function SearchBar({ onSearch }, ref) {
   const [query, setQuery] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => inputRef.current?.focus(),
+    clear: () => {
+      setQuery('');
+      onSearch('');
+    },
+  }));
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -26,10 +40,11 @@ export function SearchBar({ onSearch }: SearchBarProps) {
         <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
       </svg>
       <input
+        ref={inputRef}
         type="text"
         value={query}
         onChange={handleChange}
-        placeholder="Search resources... (type, name, attribute)"
+        placeholder="Search resources... (⌘K)"
         className="w-64 px-2 py-1.5 text-xs text-slate-700 bg-transparent outline-none placeholder:text-slate-300"
       />
       {query && (
@@ -44,4 +59,4 @@ export function SearchBar({ onSearch }: SearchBarProps) {
       )}
     </div>
   );
-}
+});
