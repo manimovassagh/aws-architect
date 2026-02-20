@@ -76,8 +76,13 @@ function subnetSize(childCount: number): { w: number; h: number } {
 
 // ─── Main builder ─────────────────────────────────────────────────────────────
 
-export function buildGraph(tfstate: Tfstate): ParseResponse {
-  const { resources, warnings } = extractResources(tfstate);
+/**
+ * Build a graph from pre-extracted resources (works for both tfstate and HCL sources).
+ */
+export function buildGraphFromResources(
+  resources: AwsResource[],
+  warnings: string[],
+): ParseResponse {
 
   // Pass 1: build a Map from AWS IDs (e.g. "vpc-0abc") → Terraform IDs (e.g. "aws_vpc.main")
   const awsIdToTfId = new Map<string, string>();
@@ -363,4 +368,12 @@ export function buildGraph(tfstate: Tfstate): ParseResponse {
     resources,
     warnings,
   };
+}
+
+/**
+ * Convenience wrapper: parse a Tfstate and build the graph in one step.
+ */
+export function buildGraph(tfstate: Tfstate): ParseResponse {
+  const { resources, warnings } = extractResources(tfstate);
+  return buildGraphFromResources(resources, warnings);
 }

@@ -2,19 +2,25 @@
 
 import { useCallback, useRef, useState } from 'react';
 
+export type UploadMode = 'tfstate' | 'hcl';
+
 type UploadState = 'idle' | 'dragging' | 'ready' | 'invalid';
 
 interface UploadProps {
+  mode: UploadMode;
   onFileAccepted: (file: File) => void;
+  onFilesAccepted: (files: File[]) => void;
 }
 
-const ACCEPTED_EXTENSIONS = ['.tfstate', '.json'];
+const TFSTATE_EXTENSIONS = ['.tfstate', '.json'];
+const HCL_EXTENSIONS = ['.tf'];
 const MAX_SIZE = 50 * 1024 * 1024; // 50 MB
 
-function validateFile(file: File): string | null {
+function validateFile(file: File, mode: UploadMode): string | null {
   const ext = file.name.slice(file.name.lastIndexOf('.'));
-  if (!ACCEPTED_EXTENSIONS.includes(ext)) {
-    return `Invalid file type "${ext}". Only .tfstate and .json files are accepted.`;
+  const accepted = mode === 'hcl' ? HCL_EXTENSIONS : TFSTATE_EXTENSIONS;
+  if (!accepted.includes(ext)) {
+    return `Invalid file type "${ext}". Only ${accepted.join(', ')} files are accepted.`;
   }
   if (file.size > MAX_SIZE) {
     return `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is 50 MB.`;
@@ -28,24 +34,30 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function Upload({ onFileAccepted }: UploadProps) {
+export function Upload({ mode, onFileAccepted, onFilesAccepted }: UploadProps) {
   const [state, setState] = useState<UploadState>('idle');
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleFile = useCallback((f: File) => {
-    const err = validateFile(f);
-    if (err) {
+  const handleFiles = useCallback((fileList: File[]) => {
+    const errors: string[] = [];
+    const valid: File[] = [];
+    for (const f of fileList) {
+      const err = validateFile(f, mode);
+      if (err) errors.push(err);
+      else valid.push(f);
+    }
+    if (errors.length > 0) {
       setState('invalid');
-      setError(err);
-      setFile(null);
-    } else {
+      setError(errors[0]!);
+      setFiles([]);
+    } else if (valid.length > 0) {
       setState('ready');
       setError(null);
-      setFile(f);
+      setFiles(valid);
     }
-  }, []);
+  }, [mode]);
 
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -60,26 +72,38 @@ export function Upload({ onFileAccepted }: UploadProps) {
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      const dropped = e.dataTransfer.files[0];
-      if (dropped) handleFile(dropped);
+      const dropped = Array.from(e.dataTransfer.files);
+      if (dropped.length > 0) handleFiles(dropped);
     },
-    [handleFile],
+    [handleFiles],
   );
 
   const onInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const selected = e.target.files?.[0];
-      if (selected) handleFile(selected);
+      const selected = Array.from(e.target.files ?? []);
+      if (selected.length > 0) handleFiles(selected);
     },
-    [handleFile],
+    [handleFiles],
   );
 
   const reset = () => {
     setState('idle');
-    setFile(null);
+    setFiles([]);
     setError(null);
     if (inputRef.current) inputRef.current.value = '';
   };
+
+  const handleSubmit = () => {
+    if (mode === 'hcl') {
+      onFilesAccepted(files);
+    } else {
+      if (files[0]) onFileAccepted(files[0]);
+    }
+  };
+
+  const isMultiple = mode === 'hcl';
+  const acceptStr = mode === 'hcl' ? '.tf' : '.tfstate,.json';
+  const fileTypeLabel = mode === 'hcl' ? '.tf' : '.tfstate';
 
   const borderColor =
     state === 'dragging'
@@ -105,7 +129,8 @@ export function Upload({ onFileAccepted }: UploadProps) {
       <input
         ref={inputRef}
         type="file"
-        accept=".tfstate,.json"
+        accept={acceptStr}
+        multiple={isMultiple}
         onChange={onInputChange}
         className="hidden"
       />
@@ -116,14 +141,27 @@ export function Upload({ onFileAccepted }: UploadProps) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
           </svg>
           <p className="text-slate-500 text-sm">
-            {state === 'dragging' ? 'Drop your file here' : 'Drag & drop a .tfstate file, or click to browse'}
+            {state === 'dragging'
+              ? 'Drop your file(s) here'
+              : `Drag & drop ${fileTypeLabel} file${isMultiple ? '(s)' : ''}, or click to browse`}
           </p>
         </>
-      ) : state === 'ready' && file ? (
+      ) : state === 'ready' && files.length > 0 ? (
         <>
           <div className="text-center">
-            <p className="text-slate-800 font-medium">{file.name}</p>
-            <p className="text-slate-500 text-xs mt-1">{formatSize(file.size)}</p>
+            {files.length === 1 ? (
+              <>
+                <p className="text-slate-800 font-medium">{files[0]!.name}</p>
+                <p className="text-slate-500 text-xs mt-1">{formatSize(files[0]!.size)}</p>
+              </>
+            ) : (
+              <>
+                <p className="text-slate-800 font-medium">{files.length} files selected</p>
+                <p className="text-slate-500 text-xs mt-1">
+                  {files.map((f) => f.name).join(', ')}
+                </p>
+              </>
+            )}
           </div>
           <div className="flex gap-3" onClick={(e) => e.stopPropagation()}>
             <button
@@ -133,7 +171,7 @@ export function Upload({ onFileAccepted }: UploadProps) {
               Clear
             </button>
             <button
-              onClick={() => onFileAccepted(file)}
+              onClick={handleSubmit}
               className="px-4 py-2 text-sm rounded-md bg-[#ED7100] text-white hover:bg-[#d96600] transition-colors font-medium"
             >
               Parse

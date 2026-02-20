@@ -16,6 +16,22 @@ export async function parseFile(file: File): Promise<ParseResponse> {
   return res.json();
 }
 
+export async function parseHcl(files: File[]): Promise<ParseResponse> {
+  const form = new FormData();
+  for (const file of files) {
+    form.append('files', file);
+  }
+
+  const res = await fetch(`${API_BASE}/api/parse/hcl`, { method: 'POST', body: form });
+
+  if (!res.ok) {
+    const err: ApiError = await res.json();
+    throw new Error(err.details ?? err.error);
+  }
+
+  return res.json();
+}
+
 export async function parseRaw(tfstate: string): Promise<ParseResponse> {
   const res = await fetch(`${API_BASE}/api/parse/raw`, {
     method: 'POST',

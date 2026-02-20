@@ -2,12 +2,12 @@
 
 import { useRef, useState } from 'react';
 import type { ParseResponse } from '@awsarchitect/shared';
-import { Upload } from '@/components/Upload';
+import { Upload, type UploadMode } from '@/components/Upload';
 import { Canvas } from '@/components/Canvas';
 import { NodeDetailPanel } from '@/components/NodeDetailPanel';
 import { ResourceSummary } from '@/components/ResourceSummary';
 import { SearchBar } from '@/components/SearchBar';
-import { parseFile } from '@/lib/api';
+import { parseFile, parseHcl } from '@/lib/api';
 
 type AppState =
   | { view: 'upload' }
@@ -18,6 +18,7 @@ type AppState =
 export default function Home() {
   const [state, setState] = useState<AppState>({ view: 'upload' });
   const [searchQuery, setSearchQuery] = useState('');
+  const [uploadMode, setUploadMode] = useState<UploadMode>('tfstate');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleFileAccepted(file: File) {
@@ -31,6 +32,21 @@ export default function Home() {
       setState({ view: 'canvas', data, selectedNodeId: null, fileName: file.name });
     } catch (err) {
       setState({ view: 'error', message: err instanceof Error ? err.message : 'Unknown error', fileName: file.name });
+    }
+  }
+
+  async function handleFilesAccepted(files: File[]) {
+    setState({ view: 'loading' });
+    try {
+      const data = await parseHcl(files);
+      if (data.resources.length === 0) {
+        setState({ view: 'error', message: 'No AWS resources found in the .tf files.', fileName: `${files.length} file(s)` });
+        return;
+      }
+      const label = files.length === 1 ? files[0]!.name : `${files.length} .tf files`;
+      setState({ view: 'canvas', data, selectedNodeId: null, fileName: label });
+    } catch (err) {
+      setState({ view: 'error', message: err instanceof Error ? err.message : 'Unknown error', fileName: `${files.length} file(s)` });
     }
   }
 
@@ -104,7 +120,7 @@ export default function Home() {
             <button
               onClick={handleQuickUpload}
               className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-lg bg-white/90 backdrop-blur-sm border border-slate-200 px-3 py-1.5 shadow-sm text-xs text-slate-500 hover:text-slate-700 hover:border-slate-300 transition-colors"
-              title="Upload a different .tfstate file"
+              title="Upload a different file"
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
@@ -168,16 +184,48 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
       <h1 className="text-4xl font-bold tracking-tight text-slate-900">AWSArchitect</h1>
-      <p className="text-slate-500 text-sm">Upload a Terraform state file to visualize your infrastructure</p>
-      <div className="w-full max-w-lg">
-        <Upload onFileAccepted={handleFileAccepted} />
+      <p className="text-slate-500 text-sm">Visualize your Terraform infrastructure</p>
+
+      {/* Mode toggle */}
+      <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+        <button
+          onClick={() => setUploadMode('tfstate')}
+          className={`px-4 py-2 text-sm font-medium transition-colors ${
+            uploadMode === 'tfstate'
+              ? 'bg-[#ED7100] text-white'
+              : 'bg-white text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          .tfstate (deployed)
+        </button>
+        <button
+          onClick={() => setUploadMode('hcl')}
+          className={`px-4 py-2 text-sm font-medium transition-colors ${
+            uploadMode === 'hcl'
+              ? 'bg-[#ED7100] text-white'
+              : 'bg-white text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          .tf source files
+        </button>
       </div>
-      <button
-        onClick={handleTrySample}
-        className="text-xs text-slate-400 hover:text-[#ED7100] transition-colors underline underline-offset-2"
-      >
-        Try with sample infrastructure
-      </button>
+
+      <div className="w-full max-w-lg">
+        <Upload
+          mode={uploadMode}
+          onFileAccepted={handleFileAccepted}
+          onFilesAccepted={handleFilesAccepted}
+        />
+      </div>
+
+      {uploadMode === 'tfstate' && (
+        <button
+          onClick={handleTrySample}
+          className="text-xs text-slate-400 hover:text-[#ED7100] transition-colors underline underline-offset-2"
+        >
+          Try with sample infrastructure
+        </button>
+      )}
     </main>
   );
 }
