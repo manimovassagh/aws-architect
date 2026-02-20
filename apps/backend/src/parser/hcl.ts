@@ -41,6 +41,7 @@ export async function extractResourcesFromHcl(
   } catch (err) {
     throw new Error(
       `Failed to parse HCL: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
     );
   }
 

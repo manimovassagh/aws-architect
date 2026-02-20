@@ -63,8 +63,6 @@ const RESOURCE_H = 100;
 const RESOURCE_GAP_X = 20;     // gap between resource columns
 const RESOURCE_GAP_Y = 20;     // gap between resource rows
 
-const ROOT_GAP = 130;
-
 // Calculate subnet dimensions based on child count
 function subnetSize(childCount: number): { w: number; h: number } {
   const cols = Math.min(childCount, SUBNET_COLS);

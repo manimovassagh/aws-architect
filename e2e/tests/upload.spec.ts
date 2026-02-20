@@ -17,7 +17,7 @@ async function uploadAndParse(page: import('@playwright/test').Page) {
 test.describe('Upload flow', () => {
   test('shows upload area on initial load', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText(/upload/i).first()).toBeVisible();
+    await expect(page.getByText(/drag & drop/i).first()).toBeVisible();
   });
 
   test('uploads tfstate and shows canvas', async ({ page }) => {
