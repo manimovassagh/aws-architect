@@ -20,12 +20,8 @@
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down"
   },
-  "overrides": {
-    "@awsarchitect/frontend": {
-      "eslint": "^8.57.1"
-    }
-  },
   "devDependencies": {
+    "eslint": "^8.57.1",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@vitest/coverage-v8": "^4.0.18",
