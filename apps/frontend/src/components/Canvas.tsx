@@ -81,6 +81,7 @@ interface CanvasProps {
   graphEdges: GraphEdge[];
   selectedNodeId: string | null;
   searchQuery: string;
+  hiddenTypes?: Set<string>;
   onNodeSelect: (nodeId: string | null) => void;
 }
 
@@ -98,15 +99,28 @@ function nodeMatchesSearch(node: GraphNode, query: string): boolean {
   );
 }
 
-export function Canvas({ graphNodes, graphEdges, selectedNodeId, searchQuery, onNodeSelect }: CanvasProps) {
+export function Canvas({ graphNodes, graphEdges, selectedNodeId, searchQuery, hiddenTypes, onNodeSelect }: CanvasProps) {
+  // Filter out hidden resource types
+  const visibleNodes = useMemo(() => {
+    if (!hiddenTypes || hiddenTypes.size === 0) return graphNodes;
+    return graphNodes.filter((n) => !hiddenTypes.has(n.data.resource.type));
+  }, [graphNodes, hiddenTypes]);
+
+  const visibleNodeIds = useMemo(() => new Set(visibleNodes.map((n) => n.id)), [visibleNodes]);
+
+  const visibleEdges = useMemo(() => {
+    if (!hiddenTypes || hiddenTypes.size === 0) return graphEdges;
+    return graphEdges.filter((e) => visibleNodeIds.has(e.source) && visibleNodeIds.has(e.target));
+  }, [graphEdges, hiddenTypes, visibleNodeIds]);
+
   // Apply search dimming to nodes
   const matchingNodeIds = useMemo(() => {
     if (!searchQuery) return null;
-    return new Set(graphNodes.filter((n) => nodeMatchesSearch(n, searchQuery)).map((n) => n.id));
-  }, [graphNodes, searchQuery]);
+    return new Set(visibleNodes.filter((n) => nodeMatchesSearch(n, searchQuery)).map((n) => n.id));
+  }, [visibleNodes, searchQuery]);
 
   const nodes = useMemo(() => {
-    return graphNodes.map((n) => {
+    return visibleNodes.map((n) => {
       const isDimmed = matchingNodeIds !== null && !matchingNodeIds.has(n.id);
       return {
         ...n,
@@ -116,12 +130,12 @@ export function Canvas({ graphNodes, graphEdges, selectedNodeId, searchQuery, on
         },
       } as Node<GraphNodeData>;
     });
-  }, [graphNodes, matchingNodeIds]);
+  }, [visibleNodes, matchingNodeIds]);
 
   // Style edges with color-coding and selection highlighting
   const edges = useMemo(
     () =>
-      graphEdges.map((e) => {
+      visibleEdges.map((e) => {
         const isConnected = selectedNodeId
           ? e.source === selectedNodeId || e.target === selectedNodeId
           : false;
@@ -151,7 +165,7 @@ export function Canvas({ graphNodes, graphEdges, selectedNodeId, searchQuery, on
           labelBgBorderRadius: 3,
         };
       }),
-    [graphEdges, selectedNodeId]
+    [visibleEdges, selectedNodeId]
   ) as Edge[];
 
   return (

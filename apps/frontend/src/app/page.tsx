@@ -18,6 +18,7 @@ type AppState =
 export default function Home() {
   const [state, setState] = useState<AppState>({ view: 'upload' });
   const [searchQuery, setSearchQuery] = useState('');
+  const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(new Set());
   const [uploadMode, setUploadMode] = useState<UploadMode>('tfstate');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchBarRef = useRef<SearchBarHandle>(null);
@@ -136,7 +137,18 @@ export default function Home() {
 
         <div className="flex flex-1 min-h-0">
           <div className="flex-1 relative">
-            <ResourceSummary resources={state.data.resources} />
+            <ResourceSummary
+              resources={state.data.resources}
+              hiddenTypes={hiddenTypes}
+              onToggleType={(type) =>
+                setHiddenTypes((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(type)) next.delete(type);
+                  else next.add(type);
+                  return next;
+                })
+              }
+            />
             <SearchBar ref={searchBarRef} onSearch={setSearchQuery} />
             {/* Upload new file button */}
             <button
@@ -154,6 +166,7 @@ export default function Home() {
               graphEdges={state.data.edges}
               selectedNodeId={state.selectedNodeId}
               searchQuery={searchQuery}
+              hiddenTypes={hiddenTypes}
               onNodeSelect={(id) =>
                 setState((prev) =>
                   prev.view === 'canvas' ? { ...prev, selectedNodeId: id } : prev
