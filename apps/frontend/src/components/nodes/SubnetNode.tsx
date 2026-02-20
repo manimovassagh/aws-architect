@@ -1,4 +1,4 @@
-import type { NodeProps } from 'reactflow';
+import { Handle, Position, type NodeProps } from 'reactflow';
 import type { GraphNodeData } from '@awsarchitect/shared';
 import { SubnetIcon } from './icons/AwsIcons';
 
@@ -18,6 +18,8 @@ export function SubnetNode({ data, selected }: NodeProps<GraphNodeData>) {
         )}
         {cidr && <span className="text-xs text-[#147EBA]/70">{cidr}</span>}
       </div>
+      <Handle type="target" position={Position.Left} className="!bg-[#147EBA] !opacity-0" />
+      <Handle type="source" position={Position.Right} className="!bg-[#147EBA] !opacity-0" />
     </div>
   );
 }

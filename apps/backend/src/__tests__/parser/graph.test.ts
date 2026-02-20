@@ -64,8 +64,10 @@ describe('buildGraph', () => {
 
   // ─── Edge generation ──────────────────────────────────────────────
 
-  it('generates edges from attribute references', () => {
-    expect(result.edges.length).toBeGreaterThanOrEqual(5);
+  it('generates non-containment edges', () => {
+    // Containment edges (in vpc, in subnet) are filtered out since parentNode
+    // nesting already shows the relationship visually
+    expect(result.edges.length).toBeGreaterThanOrEqual(3);
   });
 
   it('produces no duplicate edges', () => {
@@ -73,27 +75,25 @@ describe('buildGraph', () => {
     expect(new Set(edgeKeys).size).toBe(edgeKeys.length);
   });
 
-  it('creates vpc_id edges', () => {
+  it('filters out containment edges (parent-child)', () => {
+    // igw→vpc is a containment edge (igw.parentNode === vpc), so it should be removed
     const igwToVpc = result.edges.find(
       (e) =>
         e.source === 'aws_internet_gateway.igw' &&
         e.target === 'aws_vpc.main'
     );
-    expect(igwToVpc).toBeDefined();
-    expect(igwToVpc!.label).toBe('in vpc');
-  });
+    expect(igwToVpc).toBeUndefined();
 
-  it('creates subnet_id edges', () => {
+    // ec2→subnet is a containment edge, so it should be removed
     const ec2ToSubnet = result.edges.find(
       (e) =>
         e.source === 'aws_instance.web' &&
         e.target === 'aws_subnet.public_1'
     );
-    expect(ec2ToSubnet).toBeDefined();
-    expect(ec2ToSubnet!.label).toBe('in subnet');
+    expect(ec2ToSubnet).toBeUndefined();
   });
 
-  it('creates security group edges', () => {
+  it('keeps non-containment edges like security group', () => {
     const ec2ToSg = result.edges.find(
       (e) =>
         e.source === 'aws_instance.web' &&

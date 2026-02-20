@@ -197,20 +197,38 @@ export function buildGraph(tfstate: Tfstate): ParseResponse {
   const nodesMap = new Map<string, GraphNode>();
 
   // VPC nodes
-  vpcs.forEach((vpc, vpcIdx) => {
-    const vpcY = vpcIdx * (VPC_H + VPC_GAP);
-    nodesMap.set(vpc.id, {
-      id: vpc.id,
-      type: 'vpcNode',
-      position: { x: 0, y: vpcY },
-      data: { resource: vpc, label: vpc.displayName },
-      style: { width: VPC_W, height: VPC_H },
-    });
-
+  let vpcYOffset = 0;
+  vpcs.forEach((vpc) => {
     // Subnets inside this VPC
     const subnets = resources.filter(
       (r) => r.type === 'aws_subnet' && parentOf.get(r.id) === vpc.id
     );
+    const subnetRows = Math.ceil(subnets.length / 2) || 0;
+
+    // VPC-direct children (IGW, SG, NAT not in a subnet)
+    const vpcDirectChildren = resources.filter(
+      (r) =>
+        parentOf.get(r.id) === vpc.id &&
+        r.type !== 'aws_subnet'
+    );
+    const directRows = Math.ceil(vpcDirectChildren.length / 3) || 0;
+
+    // Calculate VPC height dynamically
+    const subnetsBottom = subnetRows > 0
+      ? SUBNET_PAD_Y + (subnetRows - 1) * SUBNET_ROW_GAP + SUBNET_H
+      : SUBNET_PAD_Y;
+    const directChildrenBottom = directRows > 0
+      ? subnetsBottom + 40 + (directRows - 1) * RESOURCE_ROW_GAP + RESOURCE_H
+      : subnetsBottom;
+    const vpcH = Math.max(VPC_H, directChildrenBottom + 40);
+
+    nodesMap.set(vpc.id, {
+      id: vpc.id,
+      type: 'vpcNode',
+      position: { x: 0, y: vpcYOffset },
+      data: { resource: vpc, label: vpc.displayName },
+      style: { width: VPC_W, height: vpcH },
+    });
 
     subnets.forEach((subnet, j) => {
       const col = j % 2;
@@ -250,14 +268,10 @@ export function buildGraph(tfstate: Tfstate): ParseResponse {
       });
     });
 
-    // VPC-direct children (IGW, SG, NAT not in a subnet)
-    const vpcDirectChildren = resources.filter(
-      (r) =>
-        parentOf.get(r.id) === vpc.id &&
-        r.type !== 'aws_subnet' &&
-        !nodesMap.has(r.id)
-    );
+    // Place VPC-direct children below subnets
     vpcDirectChildren.forEach((child, k) => {
+      // Skip if already placed inside a subnet
+      if (nodesMap.has(child.id)) return;
       const col = k % 3;
       const row = Math.floor(k / 3);
       nodesMap.set(child.id, {
@@ -265,7 +279,7 @@ export function buildGraph(tfstate: Tfstate): ParseResponse {
         type: nodeTypeFor(child.type),
         position: {
           x: SUBNET_PAD_X + col * RESOURCE_COL_GAP,
-          y: SUBNET_PAD_Y + subnets.length * SUBNET_ROW_GAP + row * RESOURCE_ROW_GAP,
+          y: subnetsBottom + 40 + row * RESOURCE_ROW_GAP,
         },
         data: { resource: child, label: child.displayName },
         parentNode: vpc.id,
@@ -273,6 +287,8 @@ export function buildGraph(tfstate: Tfstate): ParseResponse {
         style: { width: RESOURCE_W, height: RESOURCE_H },
       });
     });
+
+    vpcYOffset += vpcH + VPC_GAP;
   });
 
   // Root-level nodes (no VPC parent — e.g. S3, Lambda)
@@ -286,11 +302,16 @@ export function buildGraph(tfstate: Tfstate): ParseResponse {
     });
   });
 
-  // Remove edges where source or target has no node (defensive)
+  // Remove edges where source or target has no node, and edges that duplicate
+  // visual containment (source is already nested inside target via parentNode)
   const nodeIds = new Set(nodesMap.keys());
-  const validEdges = edges.filter(
-    (e) => nodeIds.has(e.source) && nodeIds.has(e.target)
-  );
+  const validEdges = edges.filter((e) => {
+    if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) return false;
+    // Drop containment edges — parentNode nesting already shows the relationship
+    const sourceNode = nodesMap.get(e.source)!;
+    if (sourceNode.parentNode === e.target) return false;
+    return true;
+  });
 
   return {
     nodes: Array.from(nodesMap.values()),

@@ -34,7 +34,7 @@ console.log('\n─── Verification ──────────────
 
 const checks: [string, boolean][] = [
   ['nodeCount >= 10', result.nodes.length >= 10],
-  ['edgeCount >= 5',  result.edges.length >= 5],
+  ['edgeCount >= 3',  result.edges.length >= 3],
   [
     'VPC has no parentNode',
     result.nodes.filter((n) => n.type === 'vpcNode').every((n) => !n.parentNode),

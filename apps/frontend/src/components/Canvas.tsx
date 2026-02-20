@@ -44,6 +44,30 @@ const nodeTypes = {
   genericNode: GenericNode,
 };
 
+const defaultEdgeOptions = {
+  animated: false,
+  type: 'smoothstep' as const,
+  style: { stroke: '#94a3b8', strokeDasharray: '6 3', strokeWidth: 1.5 },
+};
+
+function minimapNodeColor(node: Node) {
+  switch (node.type) {
+    case 'vpcNode':            return '#1B660F';
+    case 'subnetNode':         return '#147EBA';
+    case 'ec2Node':            return '#ED7100';
+    case 'rdsNode':            return '#3B48CC';
+    case 's3Node':             return '#3F8624';
+    case 'lambdaNode':         return '#ED7100';
+    case 'lbNode':             return '#8C4FFF';
+    case 'securityGroupNode':  return '#DD344C';
+    case 'igwNode':            return '#8C4FFF';
+    case 'natNode':            return '#8C4FFF';
+    case 'eipNode':            return '#ED7100';
+    case 'routeTableNode':     return '#8C4FFF';
+    default:                   return '#7B8794';
+  }
+}
+
 interface CanvasProps {
   graphNodes: GraphNode[];
   graphEdges: GraphEdge[];
@@ -82,32 +106,12 @@ export function Canvas({ graphNodes, graphEdges, onNodeSelect }: CanvasProps) {
       fitView
       minZoom={0.1}
       maxZoom={2}
-      defaultEdgeOptions={{
-        animated: false,
-        type: 'smoothstep',
-        style: { stroke: '#94a3b8', strokeDasharray: '6 3', strokeWidth: 1.5 },
-      }}
+      defaultEdgeOptions={defaultEdgeOptions}
     >
       <Background color="#cbd5e1" gap={20} size={1} />
       <Controls />
       <MiniMap
-        nodeColor={(node) => {
-          switch (node.type) {
-            case 'vpcNode':            return '#1B660F';
-            case 'subnetNode':         return '#147EBA';
-            case 'ec2Node':            return '#ED7100';
-            case 'rdsNode':            return '#3B48CC';
-            case 's3Node':             return '#3F8624';
-            case 'lambdaNode':         return '#ED7100';
-            case 'lbNode':             return '#8C4FFF';
-            case 'securityGroupNode':  return '#DD344C';
-            case 'igwNode':            return '#8C4FFF';
-            case 'natNode':            return '#8C4FFF';
-            case 'eipNode':            return '#ED7100';
-            case 'routeTableNode':     return '#8C4FFF';
-            default:                   return '#7B8794';
-          }
-        }}
+        nodeColor={minimapNodeColor}
         maskColor="rgba(248, 250, 252, 0.7)"
       />
     </ReactFlow>
