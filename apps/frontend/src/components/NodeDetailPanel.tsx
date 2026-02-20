@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { AwsResource, GraphEdge } from '@awsarchitect/shared';
 import {
   Ec2Icon, RdsIcon, S3Icon, LambdaIcon, LbIcon, VpcIcon,
@@ -61,6 +62,7 @@ interface NodeDetailPanelProps {
 }
 
 export function NodeDetailPanel({ resource, edges, resources, onClose }: NodeDetailPanelProps) {
+  const [copied, setCopied] = useState(false);
   const meta = TYPE_META[resource.type] ?? { label: resource.type, color: '#7B8794', Icon: GenericIcon };
   const { Icon } = meta;
 
@@ -109,7 +111,28 @@ export function NodeDetailPanel({ resource, edges, resources, onClose }: NodeDet
       {/* Terraform ID */}
       <div className="mb-4 px-3 py-2 bg-slate-50 rounded-lg">
         <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Terraform ID</p>
-        <p className="text-sm text-slate-600 font-mono mt-0.5">{resource.id}</p>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <p className="text-sm text-slate-600 font-mono truncate flex-1">{resource.id}</p>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(resource.id);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            }}
+            className="shrink-0 p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
+            title="Copy Terraform ID"
+          >
+            {copied ? (
+              <svg className="h-3.5 w-3.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+            ) : (
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Region */}
