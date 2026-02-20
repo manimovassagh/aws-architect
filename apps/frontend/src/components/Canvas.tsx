@@ -118,10 +118,16 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas({ gr
   }, []);
 
   useImperativeHandle(ref, () => ({ exportPng }));
-  // Filter out hidden resource types
+  // Filter out hidden resource types, cascading to children of hidden parents
   const visibleNodes = useMemo(() => {
     if (!hiddenTypes || hiddenTypes.size === 0) return graphNodes;
-    return graphNodes.filter((n) => !hiddenTypes.has(n.data.resource.type));
+    const hiddenNodeIds = new Set(
+      graphNodes.filter((n) => hiddenTypes.has(n.data.resource.type)).map((n) => n.id)
+    );
+    // Hide nodes whose type is hidden OR whose parent is hidden
+    return graphNodes.filter(
+      (n) => !hiddenTypes.has(n.data.resource.type) && (!n.parentNode || !hiddenNodeIds.has(n.parentNode))
+    );
   }, [graphNodes, hiddenTypes]);
 
   const visibleNodeIds = useMemo(() => new Set(visibleNodes.map((n) => n.id)), [visibleNodes]);
