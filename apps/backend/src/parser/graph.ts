@@ -215,14 +215,23 @@ export function buildGraph(tfstate: Tfstate): ParseResponse {
       return { subnet, children, ...size };
     });
 
-    // Lay out subnets in a row (side by side)
-    let subnetX = VPC_PAD_X;
-    let maxSubnetBottom = 0;
+    // Lay out subnets in a 2-column grid (wraps to multiple rows)
+    const SUBNET_MAX_COLS = 2;
+    let maxSubnetBottom = VPC_PAD_Y;
     const subnetPositions: { x: number; y: number; w: number; h: number }[] = [];
-    for (const sd of subnetData) {
-      subnetPositions.push({ x: subnetX, y: VPC_PAD_Y, w: sd.w, h: sd.h });
-      subnetX += sd.w + SUBNET_GAP_X;
-      maxSubnetBottom = Math.max(maxSubnetBottom, VPC_PAD_Y + sd.h);
+
+    // Group subnets into rows of SUBNET_MAX_COLS
+    let rowY = VPC_PAD_Y;
+    for (let i = 0; i < subnetData.length; i += SUBNET_MAX_COLS) {
+      const rowItems = subnetData.slice(i, i + SUBNET_MAX_COLS);
+      const rowHeight = Math.max(...rowItems.map((sd) => sd.h));
+      let colX = VPC_PAD_X;
+      for (const sd of rowItems) {
+        subnetPositions.push({ x: colX, y: rowY, w: sd.w, h: sd.h });
+        colX += sd.w + SUBNET_GAP_X;
+      }
+      rowY += rowHeight + SUBNET_GAP_Y;
+      maxSubnetBottom = rowY - SUBNET_GAP_Y;
     }
 
     // VPC-direct children (IGW, SG, etc.)
@@ -236,10 +245,16 @@ export function buildGraph(tfstate: Tfstate): ParseResponse {
       ? directStartY + directRows * RESOURCE_H + (directRows - 1) * RESOURCE_GAP_Y
       : maxSubnetBottom;
 
-    // VPC dimensions
-    const contentWidth = subnetX - SUBNET_GAP_X + VPC_PAD_X;
+    // VPC dimensions — widest subnet row determines width
+    let maxRowWidth = 0;
+    for (let i = 0; i < subnetPositions.length; i += SUBNET_MAX_COLS) {
+      const rowItems = subnetPositions.slice(i, i + SUBNET_MAX_COLS);
+      const last = rowItems[rowItems.length - 1]!;
+      const rowWidth = last.x + last.w + VPC_PAD_X;
+      maxRowWidth = Math.max(maxRowWidth, rowWidth);
+    }
     const directWidth = VPC_PAD_X * 2 + directCols * RESOURCE_W + Math.max(0, directCols - 1) * RESOURCE_GAP_X;
-    const vpcW = Math.max(contentWidth, directWidth, 500);
+    const vpcW = Math.max(maxRowWidth, directWidth, 500);
     const vpcH = directBottom + VPC_PAD_Y;
 
     nodesMap.set(vpc.id, {
@@ -303,20 +318,33 @@ export function buildGraph(tfstate: Tfstate): ParseResponse {
     vpcYOffset += vpcH + VPC_GAP;
   });
 
-  // Root-level nodes (outside VPC) — positioned to the right
+  // Root-level nodes (outside VPC) — grouped by type, positioned to the right
   const rootX = Math.max(
     ...Array.from(nodesMap.values()).map((n) => (n.position?.x ?? 0) + ((n.style?.width as number) ?? 0)),
     500
   ) + 60;
-  rootResources.forEach((r, i) => {
-    nodesMap.set(r.id, {
-      id: r.id,
-      type: nodeTypeFor(r.type),
-      position: { x: rootX, y: i * ROOT_GAP },
-      data: { resource: r, label: r.displayName },
-      style: { width: RESOURCE_W, height: RESOURCE_H },
-    });
-  });
+
+  // Group root resources by type for visual clustering
+  const rootByType = new Map<string, AwsResource[]>();
+  for (const r of rootResources) {
+    if (!rootByType.has(r.type)) rootByType.set(r.type, []);
+    rootByType.get(r.type)!.push(r);
+  }
+
+  let rootY = 0;
+  for (const [, group] of rootByType) {
+    for (const r of group) {
+      nodesMap.set(r.id, {
+        id: r.id,
+        type: nodeTypeFor(r.type),
+        position: { x: rootX, y: rootY },
+        data: { resource: r, label: r.displayName },
+        style: { width: RESOURCE_W, height: RESOURCE_H },
+      });
+      rootY += RESOURCE_H + RESOURCE_GAP_Y;
+    }
+    rootY += 20; // extra gap between type groups
+  }
 
   // Remove edges where source or target has no node, and edges that duplicate
   // visual containment (source is already nested inside target via parentNode)
