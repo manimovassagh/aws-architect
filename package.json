@@ -26,7 +26,7 @@
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.0.18",
-    "concurrently": "^8.2.2",
+    "concurrently": "^9.2.1",
     "conventional-changelog-conventionalcommits": "^9.1.0",
     "semantic-release": "^25.0.3",
     "typescript": "^5.3.3",
