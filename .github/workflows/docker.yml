@@ -6,7 +6,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ghcr.io/manimovassagh/aws-architect
+  IMAGE_PREFIX: ghcr.io/${{ github.repository }}
 
 permissions:
   contents: read
@@ -15,6 +15,7 @@ permissions:
 
 jobs:
   build-and-push:
+    name: Build ${{ matrix.app }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -40,8 +41,7 @@ jobs:
             type=sha,prefix=
             type=raw,value=latest
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v3
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -55,7 +55,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: ${{ env.IMAGE_PREFIX }}-${{ matrix.app }}:latest
           format: sarif

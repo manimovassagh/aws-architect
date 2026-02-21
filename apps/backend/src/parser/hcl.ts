@@ -95,16 +95,41 @@ export async function extractResourcesFromHcl(
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
- * hcl2json wraps single attribute values in arrays like [value].
- * Flatten them back to scalar values, keeping real arrays intact.
+ * hcl2json wraps resource bodies in arrays: `{ "0": { vpc_id: "..." } }`
+ * or `[{ vpc_id: "..." }]`. This function unwraps the body to get the
+ * actual attributes, then recursively flattens single-element arrays
+ * (hcl2json wraps scalar values in `[value]`).
  */
 function flattenHclAttrs(
   raw: Record<string, unknown>,
 ): Record<string, unknown> {
+  // hcl2json may wrap the resource body in an array or indexed object.
+  // Detect `{ "0": { ... } }` pattern where "0" holds the real attrs.
+  let unwrapped = raw;
+  if ('0' in raw && typeof raw['0'] === 'object' && raw['0'] !== null && !Array.isArray(raw['0'])) {
+    unwrapped = raw['0'] as Record<string, unknown>;
+  }
+
+  return flattenValues(unwrapped);
+}
+
+function flattenValues(obj: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(raw)) {
-    if (Array.isArray(value) && value.length === 1 && !Array.isArray(value[0])) {
-      result[key] = value[0];
+  for (const [key, value] of Object.entries(obj)) {
+    if (Array.isArray(value)) {
+      if (value.length === 1 && typeof value[0] === 'object' && value[0] !== null && !Array.isArray(value[0])) {
+        // Single-element array wrapping an object → unwrap and recurse (e.g. tags: [{Name: "..."}])
+        result[key] = flattenValues(value[0] as Record<string, unknown>);
+      } else if (value.length === 1 && !Array.isArray(value[0])) {
+        // Single scalar wrapped in array → unwrap
+        result[key] = value[0];
+      } else {
+        // Real array (e.g. subnet_ids, security_groups) — flatten each element
+        result[key] = value.map((v) => {
+          if (Array.isArray(v) && v.length === 1) return v[0];
+          return v;
+        });
+      }
     } else {
       result[key] = value;
     }

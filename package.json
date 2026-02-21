@@ -2,6 +2,7 @@
   "name": "awsarchitect",
   "version": "1.0.0",
   "private": true,
+  "license": "Apache-2.0 WITH Commons-Clause",
   "workspaces": [
     "apps/*",
     "packages/*"

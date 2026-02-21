@@ -12,7 +12,9 @@ services:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/health"]
       interval: 10s
       timeout: 5s
+      start_period: 10s
       retries: 3
+    restart: unless-stopped
 
   frontend:
     build:
@@ -21,7 +23,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:3001
+      - NEXT_PUBLIC_API_URL=http://backend:3001
     depends_on:
       backend:
         condition: service_healthy
+    restart: unless-stopped

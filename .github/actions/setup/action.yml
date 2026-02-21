@@ -1,0 +1,27 @@
+name: Setup Node & Dependencies
+description: Checkout, setup Node 20, and restore cached node_modules
+
+inputs:
+  node-version:
+    description: Node.js version
+    required: false
+    default: "20"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Restore node_modules cache
+      uses: actions/cache@v4
+      id: cache
+      with:
+        path: node_modules
+        key: nm-${{ runner.os }}-node${{ inputs.node-version }}-${{ hashFiles('package-lock.json') }}
+
+    - name: Install dependencies
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: npm ci
