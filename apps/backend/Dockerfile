@@ -1,5 +1,5 @@
 # ── Stage 1: Build ───────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:25-alpine AS builder
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ RUN npm run build --workspace=packages/shared && \
     npm run build --workspace=apps/backend
 
 # ── Stage 2: Production ─────────────────────────────────────
-FROM node:20-alpine AS runner
+FROM node:25-alpine AS runner
 
 RUN addgroup --system --gid 1001 appgroup && \
     adduser --system --uid 1001 appuser
