@@ -1,5 +1,3 @@
-'use client';
-
 import { useRef, useMemo, useImperativeHandle, forwardRef, useCallback } from 'react';
 import { toPng } from 'html-to-image';
 import ReactFlow, {
@@ -198,7 +196,7 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas({ gr
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
-        onNodeClick={(_, node) => onNodeSelect(node.id)}
+        onNodeClick={(_: React.MouseEvent, node: Node) => onNodeSelect(node.id)}
         onPaneClick={() => onNodeSelect(null)}
         fitView
         minZoom={0.1}

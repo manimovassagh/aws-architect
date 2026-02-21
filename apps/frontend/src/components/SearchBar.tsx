@@ -1,5 +1,3 @@
-'use client';
-
 import { useState, useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
 
 interface SearchBarProps {

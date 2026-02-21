@@ -1,5 +1,3 @@
-'use client';
-
 import { useEffect, useRef, useState } from 'react';
 import type { ParseResponse } from '@awsarchitect/shared';
 import { Upload, type UploadMode } from '@/components/Upload';
@@ -15,20 +13,17 @@ type AppState =
   | { view: 'error'; message: string; fileName?: string }
   | { view: 'canvas'; data: ParseResponse; selectedNodeId: string | null; fileName: string };
 
-export default function Home() {
+export default function App() {
   const [state, setState] = useState<AppState>({ view: 'upload' });
   const [searchQuery, setSearchQuery] = useState('');
   const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(new Set());
   const [uploadMode, setUploadMode] = useState<UploadMode>('tfstate');
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(
+    () => document.documentElement.classList.contains('dark')
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchBarRef = useRef<SearchBarHandle>(null);
   const canvasRef = useRef<CanvasHandle>(null);
-
-  // Read dark mode preference on mount
-  useEffect(() => {
-    setDarkMode(document.documentElement.classList.contains('dark'));
-  }, []);
 
   function toggleDarkMode() {
     const next = !darkMode;

@@ -1,6 +1,6 @@
 node_modules/
 dist/
-.next/
+.vite/
 .env
 .env.local
 .env.*.local
@@ -8,6 +8,7 @@ dist/
 .DS_Store
 .turbo/
 coverage/
+*.tsbuildinfo
 .cache/
 .claude/
 test/screenshots/

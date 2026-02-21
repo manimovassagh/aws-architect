@@ -1,5 +1,5 @@
 # ── Stage 1: Build ───────────────────────────────────────────
-FROM node:25-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -18,34 +18,13 @@ COPY tsconfig.base.json ./
 RUN npm run build --workspace=packages/shared && \
     npm run build --workspace=apps/frontend
 
-# Ensure public dir exists for COPY (may be empty)
-RUN mkdir -p apps/frontend/public
+# ── Stage 2: Serve static files with nginx ───────────────────
+FROM nginx:alpine
 
-# ── Stage 2: Production ─────────────────────────────────────
-FROM node:25-alpine AS runner
-
-WORKDIR /app
-
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
-
-# Copy Next.js standalone output
-COPY --from=builder /app/apps/frontend/.next/standalone ./
-COPY --from=builder /app/apps/frontend/.next/static apps/frontend/.next/static
-
-COPY --from=builder /app/apps/frontend/public apps/frontend/public
-
-USER nextjs
+COPY --from=builder /app/apps/frontend/dist /usr/share/nginx/html
+COPY apps/frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 3000
 
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD wget -q --spider http://localhost:3000 || exit 1
-
-CMD ["node", "apps/frontend/server.js"]

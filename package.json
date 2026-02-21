@@ -21,9 +21,6 @@
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down"
   },
-  "overrides": {
-    "eslint": "8.57.1"
-  },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.0.18",
     "concurrently": "^9.2.1",

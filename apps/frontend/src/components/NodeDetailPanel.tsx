@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import type { AwsResource, GraphEdge } from '@awsarchitect/shared';
 import {

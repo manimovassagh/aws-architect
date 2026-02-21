@@ -1,5 +1,3 @@
-'use client';
-
 import type { AwsResource } from '@awsarchitect/shared';
 import {
   Ec2Icon, RdsIcon, S3Icon, LambdaIcon, LbIcon, VpcIcon,

@@ -1,6 +1,6 @@
 import type { ParseResponse, ApiError } from '@awsarchitect/shared';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
 export async function parseFile(file: File): Promise<ParseResponse> {
   const form = new FormData();
