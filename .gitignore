@@ -10,3 +10,5 @@ dist/
 coverage/
 .cache/
 .claude/
+test/screenshots/
+.playwright-mcp/

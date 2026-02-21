@@ -1,4 +1,4 @@
-name: CI
+name: Quality & Tests
 
 on:
   push:
