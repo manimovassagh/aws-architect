@@ -1,5 +1,5 @@
 # ── Stage 1: Build ───────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:25-alpine AS builder
 
 WORKDIR /app
 
@@ -22,7 +22,7 @@ RUN npm run build --workspace=packages/shared && \
 RUN mkdir -p apps/frontend/public
 
 # ── Stage 2: Production ─────────────────────────────────────
-FROM node:20-alpine AS runner
+FROM node:25-alpine AS runner
 
 WORKDIR /app
 
