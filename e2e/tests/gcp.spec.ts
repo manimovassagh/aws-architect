@@ -43,7 +43,7 @@ test.describe('GCP provider flow', () => {
     await page.goto('/');
     await uploadAndParse(page);
     await expect(page.getByText('web-server')).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByText('demo-sql')).toBeVisible();
+    await expect(page.getByText('demo-db')).toBeVisible();
     await expect(page.getByText('web-lb')).toBeVisible();
   });
 });
