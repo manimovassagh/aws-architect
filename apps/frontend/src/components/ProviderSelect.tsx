@@ -32,13 +32,13 @@ export function ProviderSelect({ onUpload, onTrySample }: ProviderSelectProps) {
   return (
     <main className={`min-h-screen flex flex-col ${dark ? 'landing-bg' : 'landing-bg-light'}`}>
       {/* ── Nav ── */}
-      <nav className="flex items-center justify-between px-8 py-5 relative z-20 max-w-6xl mx-auto w-full">
+      <nav className="flex items-center justify-between px-8 py-5 relative z-20 max-w-7xl mx-auto w-full">
         <div className="flex items-center gap-1">
           {['Docs', 'API', 'AI'].map((label) => (
             <Link
               key={label}
               to={`/${label.toLowerCase()}`}
-              className="px-3 py-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+              className="px-4 py-2 text-base font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
             >
               {label}
             </Link>
@@ -76,22 +76,22 @@ export function ProviderSelect({ onUpload, onTrySample }: ProviderSelectProps) {
 
       {/* ── Hero: split layout ── */}
       <div className="flex-1 flex items-center relative z-10">
-        <div className="max-w-6xl mx-auto w-full px-8 py-12 lg:py-0 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+        <div className="max-w-7xl mx-auto w-full px-8 py-12 lg:py-0 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           {/* Left column: text + CTA */}
           <div className="flex flex-col items-start">
-            <h1 className={`text-5xl lg:text-6xl font-bold tracking-tight leading-tight ${dark ? 'text-gradient' : 'text-gradient-light'}`}>
+            <h1 className={`text-6xl lg:text-7xl font-bold tracking-tight leading-tight ${dark ? 'text-gradient' : 'text-gradient-light'}`}>
               InfraGraph
             </h1>
-            <p className="mt-4 text-xl font-medium text-slate-600 dark:text-slate-300">
+            <p className="mt-5 text-2xl font-medium text-slate-600 dark:text-slate-300">
               Terraform to architecture diagrams, instantly.
             </p>
 
             {/* Provider pills */}
-            <div className="flex flex-wrap items-center gap-2 mt-5">
+            <div className="flex flex-wrap items-center gap-2.5 mt-6">
               {samples.map((s) => (
                 <span
                   key={s.id}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium"
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-base font-medium"
                   style={{
                     backgroundColor: `${s.color}18`,
                     color: s.color,
@@ -104,18 +104,18 @@ export function ProviderSelect({ onUpload, onTrySample }: ProviderSelectProps) {
             </div>
 
             {/* Upload drop zone */}
-            <div className="w-full max-w-md mt-8">
+            <div className="w-full max-w-lg mt-8">
               <Upload onSubmit={onUpload} />
             </div>
 
             {/* Sample pill buttons */}
-            <div className="flex items-center gap-3 mt-5">
-              <span className="text-sm text-slate-400 dark:text-slate-500">Try a sample:</span>
+            <div className="flex items-center gap-3 mt-6">
+              <span className="text-base text-slate-400 dark:text-slate-500">Try a sample:</span>
               {samples.map((s) => (
                 <button
                   key={s.id}
                   onClick={() => onTrySample(s.id)}
-                  className="px-3 py-1 text-sm font-semibold rounded-full text-white transition-opacity hover:opacity-80"
+                  className="px-4 py-1.5 text-base font-semibold rounded-full text-white transition-opacity hover:opacity-80"
                   style={{ backgroundColor: s.color }}
                 >
                   {s.label}
