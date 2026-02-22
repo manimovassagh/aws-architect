@@ -83,3 +83,101 @@
 .dark .node-card:hover {
   @apply shadow-lg shadow-black/20;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Landing page — dark-first, commercial feel
+   ═══════════════════════════════════════════════════════════ */
+
+/* Dark background with radial hero glow */
+.landing-bg {
+  background-color: #09090b;
+  position: relative;
+  overflow: hidden;
+}
+.landing-bg::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  height: 70%;
+  background: radial-gradient(
+    ellipse 60% 50% at center,
+    rgba(124, 58, 237, 0.12),
+    rgba(59, 130, 246, 0.06),
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+/* Light mode background */
+.landing-bg-light {
+  background-color: #fafbff;
+  position: relative;
+  overflow: hidden;
+}
+.landing-bg-light::before {
+  content: '';
+  position: absolute;
+  top: -30%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  height: 70%;
+  background: radial-gradient(
+    ellipse 60% 50% at center,
+    rgba(124, 58, 237, 0.06),
+    rgba(59, 130, 246, 0.03),
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+/* Shimmer gradient text */
+.text-gradient {
+  background: linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6, #60a5fa);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient 4s ease infinite;
+}
+
+/* ─── Cards: light default, dark override ─── */
+
+.landing-card {
+  position: relative;
+  border-radius: 16px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+
+  /* Light mode defaults */
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+.landing-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.08),
+    0 0 0 1px var(--glow-color, rgba(99, 102, 241, 0.2));
+}
+
+/* Dark mode card */
+.dark .landing-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: none;
+}
+.dark .landing-card:hover {
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow:
+    0 0 40px -10px var(--glow-color, rgba(99, 102, 241, 0.4)),
+    0 0 0 1px var(--glow-color, rgba(99, 102, 241, 0.3));
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .text-gradient { animation: none; }
+  .landing-card:hover { transform: none; }
+}

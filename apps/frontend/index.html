@@ -6,12 +6,11 @@
     <title>InfraGraph</title>
     <meta name="description" content="Visualize Terraform infrastructure as interactive architecture diagrams" />
     <script>
-      // Prevent flash of wrong theme
+      // Dark by default — only go light if explicitly set
       try {
-        if (localStorage.getItem('theme') === 'dark') {
-          document.documentElement.classList.add('dark');
-        }
-      } catch (e) {}
+        const t = localStorage.getItem('theme');
+        if (t !== 'light') document.documentElement.classList.add('dark');
+      } catch (e) { document.documentElement.classList.add('dark'); }
     </script>
   </head>
   <body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 antialiased">
