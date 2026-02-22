@@ -21,7 +21,7 @@ const providers: ProviderCard[] = [
     name: 'Microsoft Azure',
     description: 'VNets, VMs, Storage, SQL, Functions, and more',
     color: '#0078D4',
-    enabled: false,
+    enabled: true,
   },
   {
     id: 'gcp',
