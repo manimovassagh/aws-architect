@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Default 125% zoom for a polished, larger feel */
+html {
+  zoom: 1.25;
+}
+
 /* React Flow light theme */
 .react-flow__background {
   background-color: #f8fafc;
