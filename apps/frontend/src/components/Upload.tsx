@@ -25,14 +25,16 @@ function detectMode(files: File[]): { mode: DetectedMode; error?: string } {
     else hasUnknown = true;
   }
 
-  if (hasUnknown) {
+  if (hasUnknown && !hasTfstate && !hasHcl) {
     return { mode: 'unknown', error: 'Unsupported file type. Only .tfstate, .json, and .tf files are accepted.' };
   }
+  // If there are unknown files mixed with known ones, filter them out silently
   if (hasTfstate && hasHcl) {
     return { mode: 'mixed', error: 'Cannot mix .tfstate and .tf files. Upload one type at a time.' };
   }
   if (hasTfstate) return { mode: 'tfstate' };
-  return { mode: 'hcl' };
+  if (hasHcl) return { mode: 'hcl' };
+  return { mode: 'unknown', error: 'No supported files found.' };
 }
 
 function validateFiles(files: File[]): string | null {
@@ -50,17 +52,32 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** Filter to only supported extensions */
+function filterSupported(files: File[]): File[] {
+  return files.filter((f) => {
+    const ext = f.name.slice(f.name.lastIndexOf('.'));
+    return ALL_EXTENSIONS.includes(ext);
+  });
+}
+
 export function Upload({ onSubmit }: UploadProps) {
   const [state, setState] = useState<UploadState>('idle');
   const [files, setFiles] = useState<File[]>([]);
   const [detectedMode, setDetectedMode] = useState<'tfstate' | 'hcl'>('tfstate');
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = useCallback((fileList: File[]) => {
-    // Size validation
-    const sizeErr = validateFiles(fileList);
+    // Filter to supported files (handles folder drops with mixed content)
+    const supported = filterSupported(fileList);
+    if (supported.length === 0) {
+      setState('invalid');
+      setError('No supported files found. Drop .tfstate, .json, or .tf files.');
+      setFiles([]);
+      return;
+    }
+
+    const sizeErr = validateFiles(supported);
     if (sizeErr) {
       setState('invalid');
       setError(sizeErr);
@@ -68,8 +85,7 @@ export function Upload({ onSubmit }: UploadProps) {
       return;
     }
 
-    // Auto-detect mode from extensions
-    const { mode, error: modeErr } = detectMode(fileList);
+    const { mode, error: modeErr } = detectMode(supported);
     if (modeErr) {
       setState('invalid');
       setError(modeErr);
@@ -80,7 +96,7 @@ export function Upload({ onSubmit }: UploadProps) {
     setState('ready');
     setError(null);
     setDetectedMode(mode as 'tfstate' | 'hcl');
-    setFiles(fileList);
+    setFiles(supported);
   }, []);
 
   const onDragOver = useCallback((e: React.DragEvent) => {
@@ -110,27 +126,11 @@ export function Upload({ onSubmit }: UploadProps) {
     [handleFiles],
   );
 
-  const onFolderInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const allFiles = Array.from(e.target.files ?? []);
-      const tfFiles = allFiles.filter((f) => f.name.endsWith('.tf'));
-      if (tfFiles.length === 0) {
-        setState('invalid');
-        setError('No .tf files found in the selected folder.');
-        setFiles([]);
-        return;
-      }
-      handleFiles(tfFiles);
-    },
-    [handleFiles],
-  );
-
   const reset = () => {
     setState('idle');
     setFiles([]);
     setError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
-    if (folderInputRef.current) folderInputRef.current.value = '';
   };
 
   const handleSubmit = () => {
@@ -151,9 +151,10 @@ export function Upload({ onSubmit }: UploadProps) {
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
+      onClick={() => state !== 'ready' && fileInputRef.current?.click()}
       className={`
-        flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed
-        p-7 transition-colors bg-white/80 dark:bg-white/5 backdrop-blur-sm
+        flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed
+        p-7 transition-colors bg-white/80 dark:bg-white/5 backdrop-blur-sm cursor-pointer
         ${borderColor}
       `}
     >
@@ -165,18 +166,10 @@ export function Upload({ onSubmit }: UploadProps) {
         onChange={onFileInputChange}
         className="hidden"
       />
-      <input
-        ref={folderInputRef}
-        type="file"
-        // @ts-expect-error webkitdirectory is non-standard but widely supported
-        webkitdirectory=""
-        onChange={onFolderInputChange}
-        className="hidden"
-      />
 
       {state === 'idle' || state === 'dragging' ? (
         <>
-          <svg className="h-10 w-10 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <svg className="h-8 w-8 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
           </svg>
           <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">
@@ -185,22 +178,8 @@ export function Upload({ onSubmit }: UploadProps) {
               : 'Drop .tfstate or .tf files here'}
           </p>
           <p className="text-slate-400 dark:text-slate-500 text-xs">
-            or browse files / upload folder
+            Click to browse — or drag files and folders
           </p>
-          <div className="flex gap-3" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 text-sm rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors font-medium"
-            >
-              Browse Files
-            </button>
-            <button
-              onClick={() => folderInputRef.current?.click()}
-              className="px-4 py-2 text-sm rounded-md bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors font-medium"
-            >
-              Upload Folder
-            </button>
-          </div>
         </>
       ) : state === 'ready' && files.length > 0 ? (
         <>
@@ -218,7 +197,7 @@ export function Upload({ onSubmit }: UploadProps) {
                 </p>
               </>
             )}
-            <p className="text-xs mt-2 text-slate-400 dark:text-slate-500">
+            <p className="text-xs mt-1.5 text-slate-400 dark:text-slate-500">
               Detected: <span className="font-mono">{detectedMode === 'tfstate' ? '.tfstate' : '.tf'}</span>
             </p>
           </div>
