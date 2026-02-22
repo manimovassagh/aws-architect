@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 const GITHUB_PATH =
@@ -41,6 +41,28 @@ const pathToSection: Record<string, Section> = {
   '/ai': 'quickstart',
 };
 
+interface SearchEntry {
+  section: Section;
+  title: string;
+  text: string;
+}
+
+const searchIndex: SearchEntry[] = [
+  { section: 'quickstart', title: 'Upload your Terraform file', text: 'Drop a .tfstate or .tf file onto the upload zone, or click to browse. InfraGraph auto-detects the cloud provider. Supported formats: Terraform state files, HCL configuration files, JSON-format state files.' },
+  { section: 'quickstart', title: 'Parse and visualize', text: 'Click Parse to send the file to the backend. InfraGraph extracts resources, resolves relationships, and builds a nested graph with VPCs, subnets laid out automatically.' },
+  { section: 'quickstart', title: 'Explore your infrastructure', text: 'Click a node to inspect attributes tags connections. Search resources with Cmd+K. Filter by resource type. Export diagram as PNG.' },
+  { section: 'providers', title: 'AWS Provider', text: 'AWS VPC Subnet EC2 Instance RDS S3 Bucket Lambda Function Load Balancer Security Group Internet Gateway NAT Gateway ECS EKS CloudFront DynamoDB SNS SQS Route53 IAM' },
+  { section: 'providers', title: 'Azure Provider', text: 'Azure Virtual Network Subnet Virtual Machine SQL Database Storage Account Function App Load Balancer Public IP Network Security Group AKS App Service' },
+  { section: 'providers', title: 'GCP Provider', text: 'GCP VPC Network Subnetwork Compute Instance Cloud SQL Cloud Storage Cloud Function Forwarding Rule Firewall GKE Pub/Sub Cloud Run' },
+  { section: 'providers', title: 'Container Nesting', text: 'Resources nested inside parent containers. AWS: Subnets inside VPCs. Azure: Subnets inside Virtual Networks. GCP: Subnetworks inside VPC Networks.' },
+  { section: 'api', title: 'POST /api/parse', text: 'Parse a .tfstate file and return the architecture graph. Upload via multipart form. Provider override with query parameter.' },
+  { section: 'api', title: 'POST /api/parse/hcl', text: 'Parse multiple .tf HCL files and return the architecture graph.' },
+  { section: 'api', title: 'POST /api/parse/raw', text: 'Parse raw tfstate JSON string from request body.' },
+  { section: 'api', title: 'GET /health', text: 'Health check endpoint. Returns status ok and version.' },
+  { section: 'keyboard', title: 'Keyboard Shortcuts', text: 'Cmd+K focus search bar. Escape clear search deselect node. ? toggle keyboard shortcuts help. Scroll zoom. Click drag pan canvas.' },
+  { section: 'keyboard', title: 'Canvas Controls', text: 'Zoom in out. Fit view auto-fit all nodes. Toggle interactivity lock unlock panning zooming. Minimap overview.' },
+];
+
 export function DocsPage() {
   const location = useLocation();
   const urlSection = pathToSection[location.pathname] ?? 'quickstart';
@@ -49,6 +71,8 @@ export function DocsPage() {
   const [dark, setDark] = useState(() =>
     document.documentElement.classList.contains('dark'),
   );
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Reset override when URL changes (user clicked a nav link)
   if (location.pathname !== lastPath) {
@@ -57,7 +81,20 @@ export function DocsPage() {
   }
 
   const active = override ?? urlSection;
-  const setActive = (s: Section) => setOverride(s);
+  const setActive = (s: Section) => {
+    setOverride(s);
+    setSearchQuery('');
+  };
+
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return searchIndex.filter(
+      (e) => e.title.toLowerCase().includes(q) || e.text.toLowerCase().includes(q),
+    );
+  }, [searchQuery]);
+
+  const isSearching = searchQuery.trim().length > 0;
 
   function toggleTheme() {
     const next = !dark;
@@ -130,6 +167,19 @@ export function DocsPage() {
         {/* Sidebar */}
         <aside className="hidden md:block w-48 shrink-0">
           <div className="sticky top-8">
+            <div className="relative mb-4">
+              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search docs..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400 transition-colors"
+              />
+            </div>
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3">
               Documentation
             </p>
@@ -170,12 +220,96 @@ export function DocsPage() {
             ))}
           </div>
 
-          {active === 'quickstart' && <QuickStartSection />}
-          {active === 'providers' && <ProvidersSection />}
-          {active === 'api' && <ApiSection />}
-          {active === 'keyboard' && <KeyboardSection dark={dark} />}
+          {isSearching ? (
+            <SearchResults
+              results={searchResults}
+              query={searchQuery}
+              onNavigate={(section) => {
+                setActive(section);
+                setSearchQuery('');
+              }}
+            />
+          ) : (
+            <>
+              {active === 'quickstart' && <QuickStartSection />}
+              {active === 'providers' && <ProvidersSection />}
+              {active === 'api' && <ApiSection />}
+              {active === 'keyboard' && <KeyboardSection dark={dark} />}
+            </>
+          )}
         </main>
       </div>
+    </div>
+  );
+}
+
+function highlightMatch(text: string, query: string): React.ReactNode {
+  const q = query.trim().toLowerCase();
+  if (!q) return text;
+  const idx = text.toLowerCase().indexOf(q);
+  if (idx === -1) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-yellow-200 dark:bg-yellow-500/30 text-inherit rounded px-0.5">{text.slice(idx, idx + q.length)}</mark>
+      {text.slice(idx + q.length)}
+    </>
+  );
+}
+
+const sectionLabels: Record<Section, string> = {
+  quickstart: 'Quick Start',
+  providers: 'Providers',
+  api: 'API Reference',
+  keyboard: 'Keyboard Shortcuts',
+};
+
+function SearchResults({
+  results,
+  query,
+  onNavigate,
+}: {
+  results: SearchEntry[];
+  query: string;
+  onNavigate: (section: Section) => void;
+}) {
+  if (results.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <svg className="h-12 w-12 mx-auto text-slate-300 dark:text-slate-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+        </svg>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          No results for &ldquo;{query}&rdquo;
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-slate-400 dark:text-slate-500 mb-4">
+        {results.length} result{results.length !== 1 ? 's' : ''} for &ldquo;{query}&rdquo;
+      </p>
+      {results.map((r, i) => (
+        <button
+          key={i}
+          onClick={() => onNavigate(r.section)}
+          className="w-full text-left p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-500/30 hover:bg-violet-50 dark:hover:bg-violet-500/5 transition-colors"
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-violet-500 dark:text-violet-400">
+              {sectionLabels[r.section]}
+            </span>
+          </div>
+          <p className="text-sm font-medium text-slate-900 dark:text-white">
+            {highlightMatch(r.title, query)}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
+            {highlightMatch(r.text, query)}
+          </p>
+        </button>
+      ))}
     </div>
   );
 }
@@ -493,6 +627,7 @@ function KeyboardSection({ dark }: { dark: boolean }) {
   const shortcuts = [
     { keys: ['&#8984;', 'K'], desc: 'Focus search bar' },
     { keys: ['Esc'], desc: 'Clear search / deselect node' },
+    { keys: ['?'], desc: 'Toggle keyboard shortcuts help' },
     { keys: ['Scroll'], desc: 'Zoom in/out on canvas' },
     { keys: ['Click + Drag'], desc: 'Pan the canvas' },
   ];

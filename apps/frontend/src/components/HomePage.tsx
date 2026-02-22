@@ -31,6 +31,7 @@ export function HomePage() {
     () => document.documentElement.classList.contains('dark')
   );
   const [providerConfig, setProviderConfig] = useState<ProviderFrontendConfig | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchBarRef = useRef<SearchBarHandle>(null);
   const canvasRef = useRef<CanvasHandle>(null);
@@ -63,16 +64,25 @@ export function HomePage() {
         searchBarRef.current?.focus();
       }
       if (e.key === 'Escape') {
+        if (showShortcuts) {
+          setShowShortcuts(false);
+          return;
+        }
         searchBarRef.current?.clear();
         setSearchQuery('');
         setState((prev) =>
           prev.view === 'canvas' ? { ...prev, selectedNodeId: null } : prev
         );
       }
+      if (e.key === '?' && !e.metaKey && !e.ctrlKey) {
+        const tag = (e.target as HTMLElement).tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+        setShowShortcuts((prev) => !prev);
+      }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [showShortcuts]);
 
   async function handleSmartUpload(files: File[], mode: 'tfstate' | 'hcl') {
     const fileName = files.length === 1
@@ -237,6 +247,7 @@ export function HomePage() {
                   return next;
                 })
               }
+              onResetFilters={() => setHiddenTypes(new Set())}
             />
             <SearchBar ref={searchBarRef} onSearch={setSearchQuery} />
             {/* Toolbar */}
@@ -275,6 +286,15 @@ export function HomePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
                 </svg>
                 New file
+              </button>
+              <button
+                onClick={() => setShowShortcuts(true)}
+                className="flex items-center gap-1.5 rounded-lg bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 px-3 py-1.5 shadow-sm text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300 transition-colors"
+                title="Keyboard shortcuts (?)"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                </svg>
               </button>
               <button
                 onClick={handleNewUpload}
@@ -354,6 +374,40 @@ export function HomePage() {
             )}
           </div>
         </div>
+
+        {/* Keyboard shortcuts overlay */}
+        {showShortcuts && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowShortcuts(false)}
+          >
+            <div
+              className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 p-6 w-80"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Keyboard Shortcuts</h3>
+              <div className="space-y-3">
+                {[
+                  { keys: ['⌘', 'K'], desc: 'Focus search' },
+                  { keys: ['Esc'], desc: 'Clear search / deselect' },
+                  { keys: ['?'], desc: 'Toggle this help' },
+                ].map(({ keys, desc }) => (
+                  <div key={desc} className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600 dark:text-slate-300">{desc}</span>
+                    <div className="flex gap-1">
+                      {keys.map((k) => (
+                        <kbd key={k} className="px-2 py-0.5 text-xs font-mono rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+                          {k}
+                        </kbd>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-4 text-xs text-slate-400 dark:text-slate-500 text-center">Press <kbd className="px-1 py-0.5 text-[10px] font-mono rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">?</kbd> or <kbd className="px-1 py-0.5 text-[10px] font-mono rounded bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">Esc</kbd> to close</p>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

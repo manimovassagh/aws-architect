@@ -6,7 +6,10 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'html',
+  reporter: process.env.CI
+    ? [['list'], ['github'], ['html', { open: 'never' }]]
+    : 'html',
+  timeout: 60_000,
   expect: {
     timeout: process.env.CI ? 10_000 : 5_000,
   },
@@ -26,14 +29,14 @@ export default defineConfig({
       cwd: '..',
       url: 'http://localhost:3001/health',
       reuseExistingServer: !process.env.CI,
-      timeout: 30_000,
+      timeout: 60_000,
     },
     {
       command: 'npm run dev --workspace=apps/frontend',
       cwd: '..',
       url: 'http://localhost:3000',
       reuseExistingServer: !process.env.CI,
-      timeout: 30_000,
+      timeout: 60_000,
     },
   ],
 });
