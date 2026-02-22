@@ -64,6 +64,8 @@ jobs:
         with:
           name: build-output
 
+      - run: mkdir -p test-results
+
       - name: Run Unit Tests
         run: npx vitest run --coverage --exclude 'e2e/**' --reporter=default --reporter=github-actions --reporter=junit --outputFile.junit=test-results/unit.xml
 
@@ -98,17 +100,17 @@ jobs:
       - name: Install Playwright
         run: cd e2e && npx playwright install --with-deps chromium
 
+      - run: mkdir -p test-results
+
       - name: Run E2E Tests
         timeout-minutes: 15
-        run: cd e2e && npx playwright test --reporter=list --reporter=github --reporter=junit --reporter=html
-        env:
-          PLAYWRIGHT_JUNIT_OUTPUT_NAME: e2e-results.xml
+        run: cd e2e && PLAYWRIGHT_JUNIT_OUTPUT_NAME=${{ github.workspace }}/test-results/e2e.xml npx playwright test --reporter=list --reporter=github --reporter=junit --reporter=html
 
       - name: E2E Test Summary
         if: always()
         uses: test-summary/action@v2
         with:
-          paths: e2e/e2e-results.xml
+          paths: test-results/e2e.xml
 
       - uses: actions/upload-artifact@v6
         if: always()
