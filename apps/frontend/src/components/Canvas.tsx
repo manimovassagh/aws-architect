@@ -9,70 +9,12 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import type { GraphNode, GraphEdge, GraphNodeData } from '@awsarchitect/shared';
-
-import { VpcNode } from './nodes/VpcNode';
-import { SubnetNode } from './nodes/SubnetNode';
-import { Ec2Node } from './nodes/Ec2Node';
-import { RdsNode } from './nodes/RdsNode';
-import { S3Node } from './nodes/S3Node';
-import { LambdaNode } from './nodes/LambdaNode';
-import { LbNode } from './nodes/LbNode';
-import { IgwNode } from './nodes/IgwNode';
-import { NatNode } from './nodes/NatNode';
-import { RouteTableNode } from './nodes/RouteTableNode';
-import { SecurityGroupNode } from './nodes/SecurityGroupNode';
-import { EipNode } from './nodes/EipNode';
-import { GenericNode } from './nodes/GenericNode';
-
-// MUST be defined at module scope — inside component causes infinite re-renders
-const nodeTypes = {
-  vpcNode: VpcNode,
-  subnetNode: SubnetNode,
-  ec2Node: Ec2Node,
-  rdsNode: RdsNode,
-  s3Node: S3Node,
-  lambdaNode: LambdaNode,
-  lbNode: LbNode,
-  igwNode: IgwNode,
-  natNode: NatNode,
-  routeTableNode: RouteTableNode,
-  securityGroupNode: SecurityGroupNode,
-  eipNode: EipNode,
-  genericNode: GenericNode,
-};
+import type { ProviderFrontendConfig } from '@/providers/types';
 
 const defaultEdgeOptions = {
   animated: false,
   type: 'smoothstep' as const,
   style: { stroke: '#94a3b8', strokeDasharray: '6 3', strokeWidth: 1.5 },
-};
-
-function minimapNodeColor(node: Node) {
-  switch (node.type) {
-    case 'vpcNode':            return '#1B660F';
-    case 'subnetNode':         return '#147EBA';
-    case 'ec2Node':            return '#ED7100';
-    case 'rdsNode':            return '#3B48CC';
-    case 's3Node':             return '#3F8624';
-    case 'lambdaNode':         return '#ED7100';
-    case 'lbNode':             return '#8C4FFF';
-    case 'securityGroupNode':  return '#DD344C';
-    case 'igwNode':            return '#8C4FFF';
-    case 'natNode':            return '#8C4FFF';
-    case 'eipNode':            return '#ED7100';
-    case 'routeTableNode':     return '#8C4FFF';
-    default:                   return '#7B8794';
-  }
-}
-
-// Edge colors by relationship type
-const EDGE_COLORS: Record<string, string> = {
-  'secured by': '#DD344C',
-  'depends on': '#3B48CC',
-  'routes via': '#8C4FFF',
-  'uses eip':   '#ED7100',
-  'attached to': '#64748b',
-  'behind lb':  '#8C4FFF',
 };
 
 interface CanvasProps {
@@ -81,6 +23,7 @@ interface CanvasProps {
   selectedNodeId: string | null;
   searchQuery: string;
   hiddenTypes?: Set<string>;
+  providerConfig: ProviderFrontendConfig;
   onNodeSelect: (nodeId: string | null) => void;
 }
 
@@ -102,7 +45,10 @@ export interface CanvasHandle {
   exportPng: () => Promise<void>;
 }
 
-export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas({ graphNodes, graphEdges, selectedNodeId, searchQuery, hiddenTypes, onNodeSelect }, ref) {
+export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(
+  { graphNodes, graphEdges, selectedNodeId, searchQuery, hiddenTypes, providerConfig, onNodeSelect },
+  ref,
+) {
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const exportPng = useCallback(async () => {
@@ -116,6 +62,7 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas({ gr
   }, []);
 
   useImperativeHandle(ref, () => ({ exportPng }));
+
   // Filter out hidden resource types, cascading to children of hidden parents
   const visibleNodes = useMemo(() => {
     if (!hiddenTypes || hiddenTypes.size === 0) return graphNodes;
@@ -186,7 +133,7 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas({ gr
           ? e.source === selectedNodeId || e.target === selectedNodeId
           : false;
         const isDimmed = selectedNodeId !== null && !isConnected;
-        const edgeColor = EDGE_COLORS[e.label ?? ''] ?? '#94a3b8';
+        const edgeColor = providerConfig.edgeColors[e.label ?? ''] ?? '#94a3b8';
         const color = isDimmed ? '#e2e8f0' : edgeColor;
 
         return {
@@ -211,7 +158,7 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas({ gr
           labelBgBorderRadius: 3,
         };
       }),
-    [visibleEdges, selectedNodeId]
+    [visibleEdges, selectedNodeId, providerConfig.edgeColors]
   ) as Edge[];
 
   return (
@@ -219,7 +166,7 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas({ gr
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        nodeTypes={nodeTypes}
+        nodeTypes={providerConfig.nodeTypes}
         onNodeClick={(_: React.MouseEvent, node: Node) => onNodeSelect(node.id)}
         onPaneClick={() => onNodeSelect(null)}
         fitView
@@ -230,7 +177,7 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas({ gr
         <Background color="#cbd5e1" gap={20} size={1} />
         <Controls />
         <MiniMap
-          nodeColor={minimapNodeColor}
+          nodeColor={providerConfig.minimapNodeColor}
           maskColor="rgba(248, 250, 252, 0.7)"
         />
       </ReactFlow>

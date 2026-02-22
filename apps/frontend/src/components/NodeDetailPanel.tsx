@@ -1,43 +1,7 @@
 import { useState } from 'react';
 import type { CloudResource, GraphEdge } from '@awsarchitect/shared';
-import {
-  Ec2Icon, RdsIcon, S3Icon, LambdaIcon, LbIcon, VpcIcon,
-  SubnetIcon, IgwIcon, NatIcon, SecurityGroupIcon, EipIcon,
-  RouteTableIcon, GenericIcon,
-} from './nodes/icons/AwsIcons';
-
-// ─── Type label & color mapping ──────────────────────────────────────────────
-
-const TYPE_META: Record<string, { label: string; color: string; Icon: React.FC<{ className?: string }> }> = {
-  aws_vpc:                 { label: 'VPC',             color: '#1B660F', Icon: VpcIcon },
-  aws_subnet:              { label: 'Subnet',          color: '#147EBA', Icon: SubnetIcon },
-  aws_internet_gateway:    { label: 'Internet Gateway', color: '#8C4FFF', Icon: IgwIcon },
-  aws_nat_gateway:         { label: 'NAT Gateway',     color: '#8C4FFF', Icon: NatIcon },
-  aws_route_table:         { label: 'Route Table',     color: '#8C4FFF', Icon: RouteTableIcon },
-  aws_security_group:      { label: 'Security Group',  color: '#DD344C', Icon: SecurityGroupIcon },
-  aws_instance:            { label: 'EC2 Instance',    color: '#ED7100', Icon: Ec2Icon },
-  aws_db_instance:         { label: 'RDS Database',    color: '#3B48CC', Icon: RdsIcon },
-  aws_lb:                  { label: 'Load Balancer',   color: '#8C4FFF', Icon: LbIcon },
-  aws_alb:                 { label: 'Load Balancer',   color: '#8C4FFF', Icon: LbIcon },
-  aws_eip:                 { label: 'Elastic IP',      color: '#ED7100', Icon: EipIcon },
-  aws_s3_bucket:           { label: 'S3 Bucket',       color: '#3F8624', Icon: S3Icon },
-  aws_lambda_function:     { label: 'Lambda Function', color: '#ED7100', Icon: LambdaIcon },
-};
-
-// Attributes worth showing per resource type
-const INTERESTING_ATTRS: Record<string, string[]> = {
-  aws_vpc:              ['cidr_block', 'enable_dns_hostnames', 'enable_dns_support'],
-  aws_subnet:           ['cidr_block', 'availability_zone', 'map_public_ip_on_launch'],
-  aws_instance:         ['instance_type', 'ami', 'availability_zone', 'private_ip', 'public_ip'],
-  aws_db_instance:      ['engine', 'engine_version', 'instance_class', 'allocated_storage', 'multi_az'],
-  aws_lb:               ['load_balancer_type', 'scheme', 'dns_name'],
-  aws_s3_bucket:        ['bucket', 'acl', 'versioning'],
-  aws_security_group:   ['description'],
-  aws_eip:              ['public_ip', 'allocation_id'],
-  aws_nat_gateway:      ['connectivity_type'],
-  aws_internet_gateway: [],
-  aws_lambda_function:  ['runtime', 'handler', 'memory_size', 'timeout'],
-};
+import type { ProviderFrontendConfig } from '@/providers/types';
+import { GenericIcon } from './nodes/icons/AwsIcons';
 
 function formatAttrKey(key: string): string {
   return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -56,13 +20,14 @@ interface NodeDetailPanelProps {
   resource: CloudResource;
   edges: GraphEdge[];
   resources: CloudResource[];
+  providerConfig: ProviderFrontendConfig;
   onClose: () => void;
   onSelectResource?: (nodeId: string) => void;
 }
 
-export function NodeDetailPanel({ resource, edges, resources, onClose, onSelectResource }: NodeDetailPanelProps) {
+export function NodeDetailPanel({ resource, edges, resources, providerConfig, onClose, onSelectResource }: NodeDetailPanelProps) {
   const [copied, setCopied] = useState(false);
-  const meta = TYPE_META[resource.type] ?? { label: resource.type, color: '#7B8794', Icon: GenericIcon };
+  const meta = providerConfig.typeMeta[resource.type] ?? { label: resource.type, color: '#7B8794', Icon: GenericIcon };
   const { Icon } = meta;
 
   // Find connected resources via edges
@@ -77,7 +42,7 @@ export function NodeDetailPanel({ resource, edges, resources, onClose, onSelectR
     .filter((c) => c.otherResource);
 
   // Get interesting attributes for this resource type
-  const attrKeys = INTERESTING_ATTRS[resource.type] ?? [];
+  const attrKeys = providerConfig.interestingAttrs[resource.type] ?? [];
   const displayAttrs = attrKeys
     .filter((key) => resource.attributes[key] !== undefined && resource.attributes[key] !== null && resource.attributes[key] !== '')
     .map((key) => ({ key, value: resource.attributes[key] }));
@@ -180,7 +145,7 @@ export function NodeDetailPanel({ resource, edges, resources, onClose, onSelectR
           </p>
           <div className="space-y-1.5">
             {connections.map(({ edge, otherResource, direction }) => {
-              const otherMeta = TYPE_META[otherResource!.type] ?? { label: otherResource!.type, color: '#7B8794', Icon: GenericIcon };
+              const otherMeta = providerConfig.typeMeta[otherResource!.type] ?? { label: otherResource!.type, color: '#7B8794', Icon: GenericIcon };
               const OtherIcon = otherMeta.Icon;
               return (
                 <button

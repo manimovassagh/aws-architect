@@ -1,0 +1,1 @@
+export { awsFrontendConfig } from './config';

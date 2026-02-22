@@ -1,31 +1,15 @@
 import type { CloudResource } from '@awsarchitect/shared';
-import {
-  Ec2Icon, RdsIcon, S3Icon, LambdaIcon, LbIcon, VpcIcon,
-  SubnetIcon, IgwIcon, NatIcon, SecurityGroupIcon, EipIcon,
-  GenericIcon,
-} from './nodes/icons/AwsIcons';
-
-const TYPE_CONFIG: Record<string, { label: string; Icon: React.FC<{ className?: string }> }> = {
-  aws_vpc:              { label: 'VPC',       Icon: VpcIcon },
-  aws_subnet:           { label: 'Subnet',    Icon: SubnetIcon },
-  aws_instance:         { label: 'EC2',       Icon: Ec2Icon },
-  aws_db_instance:      { label: 'RDS',       Icon: RdsIcon },
-  aws_lb:               { label: 'ALB',       Icon: LbIcon },
-  aws_s3_bucket:        { label: 'S3',        Icon: S3Icon },
-  aws_lambda_function:  { label: 'Lambda',    Icon: LambdaIcon },
-  aws_security_group:   { label: 'SG',        Icon: SecurityGroupIcon },
-  aws_internet_gateway: { label: 'IGW',       Icon: IgwIcon },
-  aws_nat_gateway:      { label: 'NAT',       Icon: NatIcon },
-  aws_eip:              { label: 'EIP',       Icon: EipIcon },
-};
+import type { ProviderFrontendConfig } from '@/providers/types';
+import { GenericIcon } from './nodes/icons/AwsIcons';
 
 interface ResourceSummaryProps {
   resources: CloudResource[];
   hiddenTypes?: Set<string>;
+  providerConfig: ProviderFrontendConfig;
   onToggleType?: (type: string) => void;
 }
 
-export function ResourceSummary({ resources, hiddenTypes, onToggleType }: ResourceSummaryProps) {
+export function ResourceSummary({ resources, hiddenTypes, providerConfig, onToggleType }: ResourceSummaryProps) {
   // Count resources by type, skip types with 0
   const counts = new Map<string, number>();
   for (const r of resources) {
@@ -44,7 +28,7 @@ export function ResourceSummary({ resources, hiddenTypes, onToggleType }: Resour
       <span className="text-xs font-medium text-slate-400 mr-1">{visibleCount} resources</span>
       <span className="text-slate-200">|</span>
       {entries.map(([type, count]) => {
-        const config = TYPE_CONFIG[type] ?? { label: type.replace('aws_', ''), Icon: GenericIcon };
+        const config = providerConfig.typeConfig[type] ?? { label: type.replace(/^(aws_|azurerm_|google_)/, ''), Icon: GenericIcon };
         const { Icon } = config;
         const isHidden = hiddenTypes?.has(type) ?? false;
         return (

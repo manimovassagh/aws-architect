@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CloudProvider, ParseResponse } from '@awsarchitect/shared';
+import type { ProviderFrontendConfig } from '@/providers/types';
+import { getProviderFrontendConfig } from '@/providers';
 import { ProviderSelect } from '@/components/ProviderSelect';
 import { Upload, type UploadMode } from '@/components/Upload';
 import { Canvas, type CanvasHandle } from '@/components/Canvas';
@@ -23,6 +25,7 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(
     () => document.documentElement.classList.contains('dark')
   );
+  const [providerConfig, setProviderConfig] = useState<ProviderFrontendConfig | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchBarRef = useRef<SearchBarHandle>(null);
   const canvasRef = useRef<CanvasHandle>(null);
@@ -37,12 +40,10 @@ export default function App() {
   // Global keyboard shortcuts
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      // Cmd/Ctrl+K → focus search bar
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         searchBarRef.current?.focus();
       }
-      // Escape → clear search, deselect node, close panel
       if (e.key === 'Escape') {
         searchBarRef.current?.clear();
         setSearchQuery('');
@@ -55,7 +56,9 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  function handleProviderSelect(provider: CloudProvider) {
+  async function handleProviderSelect(provider: CloudProvider) {
+    const config = await getProviderFrontendConfig(provider);
+    setProviderConfig(config);
     setState({ view: 'upload', provider });
   }
 
@@ -69,7 +72,10 @@ export default function App() {
         setState({ view: 'error', provider, message: 'No resources found in this file. Make sure it contains managed Terraform resources.', fileName: file.name });
         return;
       }
-      setState({ view: 'canvas', provider, data, selectedNodeId: null, fileName: file.name });
+      // Load provider config based on what backend detected
+      const config = await getProviderFrontendConfig(data.provider);
+      setProviderConfig(config);
+      setState({ view: 'canvas', provider: data.provider, data, selectedNodeId: null, fileName: file.name });
     } catch (err) {
       setState({ view: 'error', provider, message: err instanceof Error ? err.message : 'Unknown error', fileName: file.name });
     }
@@ -85,18 +91,20 @@ export default function App() {
         setState({ view: 'error', provider, message: 'No resources found in the .tf files.', fileName: `${files.length} file(s)` });
         return;
       }
+      const config = await getProviderFrontendConfig(data.provider);
+      setProviderConfig(config);
       const label = files.length === 1 ? files[0]!.name : `${files.length} .tf files`;
-      setState({ view: 'canvas', provider, data, selectedNodeId: null, fileName: label });
+      setState({ view: 'canvas', provider: data.provider, data, selectedNodeId: null, fileName: label });
     } catch (err) {
       setState({ view: 'error', provider, message: err instanceof Error ? err.message : 'Unknown error', fileName: `${files.length} file(s)` });
     }
   }
 
   function handleNewUpload() {
+    setProviderConfig(null);
     setState({ view: 'provider-select' });
   }
 
-  // Reupload via hidden input (used from canvas header)
   function handleQuickUpload() {
     fileInputRef.current?.click();
   }
@@ -143,14 +151,13 @@ export default function App() {
     );
   }
 
-  if (state.view === 'canvas') {
+  if (state.view === 'canvas' && providerConfig) {
     const selectedResource = state.selectedNodeId
       ? state.data.resources.find((r) => r.id === state.selectedNodeId)
       : null;
 
     return (
       <div className="flex flex-col h-screen">
-        {/* Hidden file input for quick re-upload */}
         <input
           ref={fileInputRef}
           type="file"
@@ -164,6 +171,7 @@ export default function App() {
             <ResourceSummary
               resources={state.data.resources}
               hiddenTypes={hiddenTypes}
+              providerConfig={providerConfig}
               onToggleType={(type) =>
                 setHiddenTypes((prev) => {
                   const next = new Set(prev);
@@ -174,7 +182,7 @@ export default function App() {
               }
             />
             <SearchBar ref={searchBarRef} onSearch={setSearchQuery} />
-            {/* Toolbar: Export PNG + Upload new file */}
+            {/* Toolbar */}
             <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5">
               <button
                 onClick={() => canvasRef.current?.exportPng()}
@@ -229,6 +237,7 @@ export default function App() {
               selectedNodeId={state.selectedNodeId}
               searchQuery={searchQuery}
               hiddenTypes={hiddenTypes}
+              providerConfig={providerConfig}
               onNodeSelect={(id) =>
                 setState((prev) =>
                   prev.view === 'canvas' ? { ...prev, selectedNodeId: id } : prev
@@ -242,6 +251,7 @@ export default function App() {
                 resource={selectedResource}
                 edges={state.data.edges}
                 resources={state.data.resources}
+                providerConfig={providerConfig}
                 onClose={() =>
                   setState((prev) =>
                     prev.view === 'canvas' ? { ...prev, selectedNodeId: null } : prev
@@ -278,7 +288,9 @@ export default function App() {
       const blob = new Blob([text], { type: 'application/json' });
       const file = new File([blob], 'sample.tfstate');
       const data = await parseFile(file, provider);
-      setState({ view: 'canvas', provider, data, selectedNodeId: null, fileName: 'sample.tfstate' });
+      const config = await getProviderFrontendConfig(data.provider);
+      setProviderConfig(config);
+      setState({ view: 'canvas', provider: data.provider, data, selectedNodeId: null, fileName: 'sample.tfstate' });
     } catch (err) {
       setState({ view: 'error', provider, message: err instanceof Error ? err.message : 'Failed to load sample' });
     }
@@ -288,7 +300,7 @@ export default function App() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
       <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">InfraGraph</h1>
-      <p className="text-slate-500 text-sm">Upload your {state.provider.toUpperCase()} Terraform files</p>
+      <p className="text-slate-500 text-sm">Upload your {state.view === 'upload' ? state.provider.toUpperCase() : ''} Terraform files</p>
 
       {/* Mode toggle */}
       <div className="flex rounded-lg border border-slate-200 overflow-hidden">
