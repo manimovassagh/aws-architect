@@ -119,13 +119,37 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas({ gr
   // Filter out hidden resource types, cascading to children of hidden parents
   const visibleNodes = useMemo(() => {
     if (!hiddenTypes || hiddenTypes.size === 0) return graphNodes;
+
+    // Pass 1: Remove nodes whose type is hidden or whose parent is hidden
     const hiddenNodeIds = new Set(
       graphNodes.filter((n) => hiddenTypes.has(n.data.resource.type)).map((n) => n.id)
     );
-    // Hide nodes whose type is hidden OR whose parent is hidden
-    return graphNodes.filter(
+    let filtered = graphNodes.filter(
       (n) => !hiddenTypes.has(n.data.resource.type) && (!n.parentNode || !hiddenNodeIds.has(n.parentNode))
     );
+
+    // Pass 2: Remove container nodes with no visible children
+    const CONTAINER_TYPES = new Set(['vpcNode', 'subnetNode']);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const currentIds = new Set(filtered.map((n) => n.id));
+      const hasChildren = new Set<string>();
+      for (const n of filtered) {
+        if (n.parentNode && currentIds.has(n.parentNode)) {
+          hasChildren.add(n.parentNode);
+        }
+      }
+      const next = filtered.filter(
+        (n) => !CONTAINER_TYPES.has(n.type) || hasChildren.has(n.id)
+      );
+      if (next.length < filtered.length) {
+        changed = true;
+        filtered = next;
+      }
+    }
+
+    return filtered;
   }, [graphNodes, hiddenTypes]);
 
   const visibleNodeIds = useMemo(() => new Set(visibleNodes.map((n) => n.id)), [visibleNodes]);
