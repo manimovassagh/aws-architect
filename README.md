@@ -2,21 +2,27 @@
 
 Visualize your Terraform infrastructure as interactive architecture diagrams. Upload `.tfstate` or `.tf` source files and get a live, zoomable canvas showing VPCs, subnets, and resources with their relationships.
 
-![InfraGraph Provider Selection](docs/infragraph-landing.png)
+![InfraGraph Landing Page](docs/infragraph-landing.png)
 
 ![InfraGraph Canvas](docs/infragraph-canvas.png)
 
+![InfraGraph Documentation](docs/infragraph-docs.png)
+
 ## Features
 
-- **Multi-cloud** — AWS, Azure, and GCP fully supported
+- **Multi-cloud** — AWS, Azure, and GCP fully supported with branded icons
 - Parse Terraform state files (`.tfstate`) and HCL source files (`.tf`)
 - Auto-layout: VPC > Subnet > Resource hierarchy with nested containers
 - Interactive React Flow canvas with zoom, pan, minimap, and dark mode
 - Click any node to inspect attributes, tags, and connections
+- Provider badge showing cloud provider, filename, and resource count
 - Export diagrams as PNG
-- Search resources with keyboard shortcut (Cmd+K)
-- Resource type badges with counts in the toolbar
-- Sample infrastructure for quick demo
+- Search resources with keyboard shortcut (`Cmd+K`)
+- Keyboard shortcuts help overlay (`?`)
+- Resource type filter badges with counts and reset button
+- Built-in documentation with searchable Quick Start, Providers, API Reference, and Keyboard Shortcuts
+- Client-side routing with browser back/forward support
+- Sample infrastructure for quick demo (one click per provider)
 - Auto-detection of cloud provider from resource types
 - Fully Dockerized with multi-stage builds
 
