@@ -22,8 +22,6 @@
     "docker:down": "docker compose down"
   },
   "devDependencies": {
-    "@semantic-release/exec": "^7.1.0",
-    "@semantic-release/git": "^10.0.1",
     "@vitest/coverage-v8": "^4.0.18",
     "concurrently": "^9.2.1",
     "conventional-changelog-conventionalcommits": "^9.1.0",
