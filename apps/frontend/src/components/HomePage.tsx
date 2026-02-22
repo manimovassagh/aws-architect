@@ -10,6 +10,12 @@ import { ResourceSummary } from '@/components/ResourceSummary';
 import { SearchBar, type SearchBarHandle } from '@/components/SearchBar';
 import { parseFile, parseHcl } from '@/lib/api';
 
+const PROVIDER_META: Record<string, { label: string; color: string }> = {
+  aws: { label: 'AWS', color: '#FF9900' },
+  azure: { label: 'Azure', color: '#0078D4' },
+  gcp: { label: 'GCP', color: '#4285F4' },
+};
+
 type AppState =
   | { view: 'landing' }
   | { view: 'loading'; fileName: string }
@@ -259,6 +265,29 @@ export function HomePage() {
                 Home
               </button>
             </div>
+            {/* Provider badge — bottom-left */}
+            {(() => {
+              const meta = PROVIDER_META[state.provider] ?? { label: state.provider, color: '#6B7280' };
+              return (
+                <div className="absolute bottom-4 left-4 z-10 flex items-center gap-3 rounded-xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 px-4 py-2.5 shadow-lg">
+                  <span
+                    className="text-2xl font-bold tracking-tight"
+                    style={{ color: meta.color }}
+                  >
+                    {meta.label}
+                  </span>
+                  <div className="h-6 w-px bg-slate-200 dark:bg-slate-600" />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate max-w-[200px]">
+                      {state.fileName}
+                    </span>
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                      {state.data.resources.length} resources
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
             <Canvas
               ref={canvasRef}
               graphNodes={state.data.nodes}
