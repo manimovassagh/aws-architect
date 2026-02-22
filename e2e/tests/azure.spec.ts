@@ -17,7 +17,7 @@ async function uploadAndParse(page: import('@playwright/test').Page) {
 test.describe('Azure provider flow', () => {
   test('Azure card is visible on landing page', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText('Azure')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Azure' })).toBeVisible();
   });
 
   test('uploads Azure tfstate and renders VNet', async ({ page }) => {

@@ -18,7 +18,7 @@ test.describe('Upload flow', () => {
   test('shows upload area and provider cards on initial load', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByText(/Drop .tfstate or .tf files here/i)).toBeVisible();
-    await expect(page.getByText('AWS')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'AWS' })).toBeVisible();
   });
 
   test('uploads tfstate and shows canvas', async ({ page }) => {
