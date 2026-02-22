@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps } from 'reactflow';
-import type { GraphNodeData } from '@awsarchitect/shared';
+import type { GraphNodeData } from '@infragraph/shared';
 import { VpcIcon } from './icons/AwsIcons';
 
 export function VpcNode({ data, selected }: NodeProps<GraphNodeData>) {

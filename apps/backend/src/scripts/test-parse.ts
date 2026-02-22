@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { parseTfstate } from '../parser/tfstate.js';
 import { buildGraph } from '../parser/graph.js';
+import { awsProvider } from '../providers/aws.js';
 
 const fixturePath = resolve(
   new URL('.', import.meta.url).pathname,
@@ -10,7 +11,7 @@ const fixturePath = resolve(
 
 const raw = readFileSync(fixturePath, 'utf-8');
 const tfstate = parseTfstate(raw);
-const result = buildGraph(tfstate);
+const result = buildGraph(tfstate, awsProvider);
 
 console.log('\n─── Summary ──────────────────────────────────────');
 console.log(`nodeCount:     ${result.nodes.length}`);

@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps } from 'reactflow';
-import type { GraphNodeData } from '@awsarchitect/shared';
+import type { GraphNodeData } from '@infragraph/shared';
 import { SubnetIcon } from './icons/AwsIcons';
 
 export function SubnetNode({ data, selected }: NodeProps<GraphNodeData>) {

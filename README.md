@@ -1,9 +1,14 @@
-# AWSArchitect
+# InfraGraph
 
-Visualize AWS infrastructure as interactive architecture diagrams. Upload `.tfstate` or `.tf` source files and get a live, zoomable canvas showing your VPCs, subnets, and resources with their relationships.
+Visualize your Terraform infrastructure as interactive architecture diagrams. Upload `.tfstate` or `.tf` source files and get a live, zoomable canvas showing VPCs, subnets, and resources with their relationships.
+
+![InfraGraph Provider Selection](docs/infragraph-landing.png)
+
+![InfraGraph Canvas](docs/infragraph-canvas.png)
 
 ## Features
 
+- **Multi-cloud ready** — AWS fully supported; Azure and GCP coming soon
 - Parse Terraform state files (`.tfstate`) and HCL source files (`.tf`)
 - Auto-layout: VPC > Subnet > Resource hierarchy with nested containers
 - Interactive React Flow canvas with zoom, pan, minimap, and dark mode
@@ -12,25 +17,34 @@ Visualize AWS infrastructure as interactive architecture diagrams. Upload `.tfst
 - Search resources with keyboard shortcut (Cmd+K)
 - Resource type badges with counts in the toolbar
 - Sample infrastructure for quick demo
+- Auto-detection of cloud provider from resource types
 - Fully Dockerized with multi-stage builds
 
 ## Project Structure
 
 ```
-aws-architect/
+infragraph/
 ├── apps/
-│   ├── backend/           # Fastify API — parses tfstate/HCL, builds graph
-│   │   └── Dockerfile     # Multi-stage Node 20 Alpine
-│   └── frontend/          # Next.js 14 — React Flow canvas + UI
-│       └── Dockerfile     # Standalone output, Node 20 Alpine
+│   ├── backend/           # Express API — parses tfstate/HCL, builds graph
+│   │   ├── src/
+│   │   │   ├── parser/    # tfstate, graph, and HCL parsers
+│   │   │   ├── providers/ # Cloud provider configs (aws, azure, gcp)
+│   │   │   └── routes/    # API route handlers
+│   │   └── Dockerfile
+│   └── frontend/          # Vite + React 18 — React Flow canvas + UI
+│       ├── src/
+│       │   ├── components/  # Canvas, nodes, panels, provider select
+│       │   ├── providers/   # Frontend provider configs (aws, azure, gcp)
+│       │   └── lib/         # API client, icons
+│       └── Dockerfile
 ├── packages/
-│   └── shared/            # Shared TypeScript types (AwsResource, GraphNode, etc.)
+│   └── shared/            # Shared TypeScript types (CloudResource, GraphNode, etc.)
 ├── e2e/                   # Playwright end-to-end tests
 ├── test/
 │   ├── fixtures/
 │   │   ├── projects/      # 11 .tf source test projects
 │   │   └── tfstate/       # 11 .tfstate test fixtures (simple → complex)
-│   └── screenshots/       # Browser test screenshots
+│   └── screenshots/
 ├── docker-compose.yml
 └── Makefile
 ```
@@ -45,7 +59,7 @@ make up
 make install dev
 ```
 
-Open http://localhost:3000 and upload a `.tfstate` or `.tf` file.
+Open http://localhost:3000, select a cloud provider, and upload a `.tfstate` or `.tf` file.
 
 ## Prerequisites
 
@@ -84,6 +98,8 @@ make check         # Run lint + typecheck + test (CI equivalent)
 
 ## API
 
+All endpoints accept an optional `?provider=aws|azure|gcp` query parameter to override auto-detection.
+
 ### `POST /api/parse`
 
 Upload a `.tfstate` file as multipart form data (field: `tfstate`).
@@ -102,7 +118,8 @@ All endpoints return:
 {
   nodes: GraphNode[];
   edges: GraphEdge[];
-  resources: AwsResource[];
+  resources: CloudResource[];
+  provider: CloudProvider;
   warnings: string[];
 }
 ```
@@ -110,6 +127,16 @@ All endpoints return:
 ### `GET /health`
 
 Health check endpoint.
+
+Swagger docs available at http://localhost:3001/docs.
+
+## Supported Cloud Providers
+
+| Provider | Status | Resource Types |
+|----------|--------|----------------|
+| **AWS** | Supported | VPC, Subnet, EC2, RDS, S3, Lambda, ECS, EKS, ALB, and 20+ more |
+| **Azure** | Coming soon | VNet, VM, Storage, SQL, Functions, and more |
+| **GCP** | Coming soon | VPC, Compute, Cloud SQL, GCS, Cloud Functions |
 
 ## Test Fixtures
 

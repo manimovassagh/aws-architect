@@ -6,8 +6,15 @@ const FIXTURE = path.resolve(
   '../../apps/backend/src/fixtures/sample.tfstate'
 );
 
+/** Select AWS provider from the landing page */
+async function selectAwsProvider(page: import('@playwright/test').Page) {
+  await page.getByRole('button', { name: /Amazon Web Services/i }).click();
+  await expect(page.getByText(/drag & drop/i).first()).toBeVisible({ timeout: 5_000 });
+}
+
 /** Select fixture file and click Parse to reach the canvas view */
 async function uploadAndParse(page: import('@playwright/test').Page) {
+  await selectAwsProvider(page);
   const fileInput = page.locator('input[type="file"]');
   await fileInput.setInputFiles(FIXTURE);
   await page.getByRole('button', { name: 'Parse' }).click();
@@ -15,8 +22,15 @@ async function uploadAndParse(page: import('@playwright/test').Page) {
 }
 
 test.describe('Upload flow', () => {
-  test('shows upload area on initial load', async ({ page }) => {
+  test('shows provider selection on initial load', async ({ page }) => {
     await page.goto('/');
+    await expect(page.getByText(/Select a cloud provider/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Amazon Web Services/i })).toBeVisible();
+  });
+
+  test('shows upload area after selecting AWS', async ({ page }) => {
+    await page.goto('/');
+    await selectAwsProvider(page);
     await expect(page.getByText(/drag & drop/i).first()).toBeVisible();
   });
 

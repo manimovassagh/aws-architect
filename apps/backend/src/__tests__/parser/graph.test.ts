@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildGraph } from '../../parser/graph.js';
-import type { Tfstate } from '@awsarchitect/shared';
+import { awsProvider } from '../../providers/aws.js';
+import type { Tfstate } from '@infragraph/shared';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -12,7 +13,7 @@ const fixture = JSON.parse(
 ) as Tfstate;
 
 describe('buildGraph', () => {
-  const result = buildGraph(fixture);
+  const result = buildGraph(fixture, awsProvider);
 
   // ─── Node generation ──────────────────────────────────────────────
 
@@ -58,7 +59,7 @@ describe('buildGraph', () => {
         },
       ],
     };
-    const { nodes } = buildGraph(customState);
+    const { nodes } = buildGraph(customState, awsProvider);
     expect(nodes[0]!.type).toBe('genericNode');
   });
 
@@ -180,7 +181,7 @@ describe('buildGraph', () => {
       terraform_version: '1.6.0',
       resources: [],
     };
-    const { nodes, edges, warnings } = buildGraph(empty);
+    const { nodes, edges, warnings } = buildGraph(empty, awsProvider);
     expect(nodes).toEqual([]);
     expect(edges).toEqual([]);
     expect(warnings).toEqual([]);

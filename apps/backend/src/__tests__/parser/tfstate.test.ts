@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseTfstate, extractResources } from '../../parser/tfstate.js';
-import type { Tfstate } from '@awsarchitect/shared';
+import { awsProvider } from '../../providers/aws.js';
+import type { Tfstate } from '@infragraph/shared';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -62,17 +63,17 @@ describe('extractResources', () => {
   ) as Tfstate;
 
   it('extracts all managed resources from sample fixture', () => {
-    const { resources } = extractResources(fixture);
+    const { resources } = extractResources(fixture, awsProvider);
     expect(resources.length).toBe(11);
   });
 
   it('returns no warnings for a clean fixture', () => {
-    const { warnings } = extractResources(fixture);
+    const { warnings } = extractResources(fixture, awsProvider);
     expect(warnings).toEqual([]);
   });
 
   it('uses correct IDs in type.name format', () => {
-    const { resources } = extractResources(fixture);
+    const { resources } = extractResources(fixture, awsProvider);
     const ids = resources.map((r) => r.id);
     expect(ids).toContain('aws_vpc.main');
     expect(ids).toContain('aws_instance.web');
@@ -80,13 +81,13 @@ describe('extractResources', () => {
   });
 
   it('extracts display names from Name tags', () => {
-    const { resources } = extractResources(fixture);
+    const { resources } = extractResources(fixture, awsProvider);
     const vpc = resources.find((r) => r.id === 'aws_vpc.main')!;
     expect(vpc.displayName).toBe('main-vpc');
   });
 
   it('extracts tags correctly', () => {
-    const { resources } = extractResources(fixture);
+    const { resources } = extractResources(fixture, awsProvider);
     const vpc = resources.find((r) => r.id === 'aws_vpc.main')!;
     expect(vpc.tags).toEqual({ Name: 'main-vpc', Environment: 'dev' });
   });
@@ -110,7 +111,7 @@ describe('extractResources', () => {
         },
       ],
     };
-    const { resources } = extractResources(stateWithData);
+    const { resources } = extractResources(stateWithData, awsProvider);
     expect(resources).toHaveLength(0);
   });
 
@@ -137,14 +138,14 @@ describe('extractResources', () => {
         },
       ],
     };
-    const { resources } = extractResources(multiInstance);
+    const { resources } = extractResources(multiInstance, awsProvider);
     expect(resources).toHaveLength(2);
     expect(resources[0]!.id).toBe('aws_instance.workers[0]');
     expect(resources[1]!.id).toBe('aws_instance.workers[1]');
   });
 
   it('filters dependencies to supported types only', () => {
-    const { resources } = extractResources(fixture);
+    const { resources } = extractResources(fixture, awsProvider);
     const nat = resources.find((r) => r.id === 'aws_nat_gateway.nat')!;
     expect(nat.dependencies).toContain('aws_eip.nat_eip');
     expect(nat.dependencies).toContain('aws_subnet.public_1');
@@ -156,7 +157,7 @@ describe('extractResources', () => {
       terraform_version: '1.6.0',
       resources: [],
     };
-    const { resources, warnings } = extractResources(empty);
+    const { resources, warnings } = extractResources(empty, awsProvider);
     expect(resources).toEqual([]);
     expect(warnings).toEqual([]);
   });
@@ -183,18 +184,18 @@ describe('extractResources', () => {
         },
       ],
     };
-    const { resources } = extractResources(arnState);
+    const { resources } = extractResources(arnState, awsProvider);
     expect(resources[0]!.region).toBe('us-west-2');
   });
 
   it('returns undefined region when no ARN present', () => {
-    const { resources } = extractResources(fixture);
+    const { resources } = extractResources(fixture, awsProvider);
     const vpc = resources.find((r) => r.id === 'aws_vpc.main')!;
     expect(vpc.region).toBeUndefined();
   });
 
   it('assigns correct resource types', () => {
-    const { resources } = extractResources(fixture);
+    const { resources } = extractResources(fixture, awsProvider);
     const types = new Set(resources.map((r) => r.type));
     expect(types).toContain('aws_vpc');
     expect(types).toContain('aws_subnet');

@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps } from 'reactflow';
-import type { GraphNodeData } from '@awsarchitect/shared';
+import type { GraphNodeData } from '@infragraph/shared';
 import { Ec2Icon } from './icons/AwsIcons';
 
 export function Ec2Node({ data, selected }: NodeProps<GraphNodeData>) {

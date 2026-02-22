@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps } from 'reactflow';
-import type { GraphNodeData } from '@awsarchitect/shared';
+import type { GraphNodeData } from '@infragraph/shared';
 import { NatIcon } from './icons/AwsIcons';
 
 export function NatNode({ data, selected }: NodeProps<GraphNodeData>) {

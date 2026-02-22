@@ -4,7 +4,8 @@ import { z } from 'zod';
 import { parseTfstate } from '../parser/tfstate.js';
 import { buildGraph, buildGraphFromResources } from '../parser/graph.js';
 import { extractResourcesFromHcl } from '../parser/hcl.js';
-import type { ParseResponse, ApiError } from '@awsarchitect/shared';
+import { detectProvider, detectProviderFromTypes, getProvider } from '../providers/index.js';
+import type { CloudProvider, ParseResponse, ApiError } from '@infragraph/shared';
 
 export const parseRouter = Router();
 
@@ -21,6 +22,14 @@ const upload = multer({
   },
 });
 
+/** Resolve provider from query param override or auto-detect from tfstate */
+function resolveProviderParam(query: unknown): CloudProvider | undefined {
+  if (typeof query === 'string' && ['aws', 'azure', 'gcp'].includes(query)) {
+    return query as CloudProvider;
+  }
+  return undefined;
+}
+
 // POST /api/parse — multipart upload
 parseRouter.post('/parse', upload.single('tfstate'), (req, res) => {
   try {
@@ -32,9 +41,13 @@ parseRouter.post('/parse', upload.single('tfstate'), (req, res) => {
 
     const raw = req.file.buffer.toString('utf-8');
     const tfstate = parseTfstate(raw);
-    const { nodes, edges, resources, warnings } = buildGraph(tfstate);
 
-    const response: ParseResponse = { nodes, edges, resources, warnings };
+    // Provider: query param override or auto-detect
+    const override = resolveProviderParam(req.query['provider']);
+    const provider = override ? getProvider(override) : detectProvider(tfstate);
+
+    const result = buildGraph(tfstate, provider);
+    const response: ParseResponse = result;
     res.json(response);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
@@ -56,8 +69,11 @@ parseRouter.post('/parse/raw', (req, res) => {
 
   try {
     const tfstate = parseTfstate(result.data.tfstate);
-    const { nodes, edges, resources, warnings } = buildGraph(tfstate);
-    const response: ParseResponse = { nodes, edges, resources, warnings };
+    const override = resolveProviderParam(req.query['provider']);
+    const provider = override ? getProvider(override) : detectProvider(tfstate);
+
+    const parseResult = buildGraph(tfstate, provider);
+    const response: ParseResponse = parseResult;
     res.json(response);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
@@ -95,9 +111,23 @@ parseRouter.post('/parse/hcl', hclUpload.array('files', 50), async (req, res) =>
       fileMap.set(f.originalname, f.buffer.toString('utf-8'));
     }
 
-    const { resources, warnings } = await extractResourcesFromHcl(fileMap);
-    const result = buildGraphFromResources(resources, warnings);
-    const response: ParseResponse = result;
+    // Detect provider from resource type keys in the HCL, or use query param
+    const override = resolveProviderParam(req.query['provider']);
+    // We need to peek at resource types for auto-detection before full parse
+    // For simplicity, parse first with detected provider
+    // Quick-parse to get resource type keys
+    const { parse: parseHcl } = await import('@cdktf/hcl2json');
+    const allTypes: string[] = [];
+    for (const [name, content] of fileMap) {
+      const result = await parseHcl(name, content);
+      const resourceBlocks = result['resource'] as Record<string, unknown> | undefined;
+      if (resourceBlocks) allTypes.push(...Object.keys(resourceBlocks));
+    }
+    const provider = override ? getProvider(override) : detectProviderFromTypes(allTypes);
+
+    const { resources, warnings } = await extractResourcesFromHcl(fileMap, provider);
+    const graphResult = buildGraphFromResources(resources, warnings, provider);
+    const response: ParseResponse = graphResult;
     res.json(response);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';

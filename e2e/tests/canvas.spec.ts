@@ -9,6 +9,9 @@ const FIXTURE = path.resolve(
 test.describe('Canvas interactions', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    // Select AWS provider first
+    await page.getByRole('button', { name: /Amazon Web Services/i }).click();
+    await expect(page.getByText(/drag & drop/i).first()).toBeVisible({ timeout: 5_000 });
     const fileInput = page.locator('input[type="file"]');
     await fileInput.setInputFiles(FIXTURE);
     await page.getByRole('button', { name: 'Parse' }).click();

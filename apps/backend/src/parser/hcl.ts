@@ -1,23 +1,18 @@
 import { parse } from '@cdktf/hcl2json';
-import type { AwsResource } from '@awsarchitect/shared';
-
-// Attribute keys that carry references to other resources
-const REF_ATTRS = [
-  'vpc_id', 'subnet_id', 'subnet_ids', 'security_groups',
-  'vpc_security_group_ids', 'nat_gateway_id', 'internet_gateway_id',
-  'instance_id', 'allocation_id', 'load_balancer_arn', 'gateway_id',
-];
+import type { CloudResource, ProviderConfig } from '@infragraph/shared';
 
 /**
- * Parse HCL .tf files and extract AwsResources compatible with buildGraphFromResources().
+ * Parse HCL .tf files and extract CloudResources compatible with buildGraphFromResources().
  *
  * @param files Map of filename → file content
+ * @param provider Provider config for reference resolution
  */
 export async function extractResourcesFromHcl(
   files: Map<string, string>,
-): Promise<{ resources: AwsResource[]; warnings: string[] }> {
+  provider: ProviderConfig,
+): Promise<{ resources: CloudResource[]; warnings: string[] }> {
   const warnings: string[] = [];
-  const resources: AwsResource[] = [];
+  const resources: CloudResource[] = [];
 
   // Parse each file individually and deep-merge the results
   let parsed: Record<string, unknown> = {};
@@ -42,17 +37,20 @@ export async function extractResourcesFromHcl(
     return { resources, warnings };
   }
 
+  // Derive ref attribute keys from provider's edge attributes
+  const refAttrs = provider.edgeAttributes.map(([attr]) => attr);
+
   // resourceBlocks shape: { "aws_vpc": { "main": { cidr_block: "..." } }, ... }
   for (const [resourceType, instances] of Object.entries(resourceBlocks)) {
     for (const [resourceName, rawAttrs] of Object.entries(instances)) {
       const tfId = `${resourceType}.${resourceName}`;
       const attrs = flattenHclAttrs(rawAttrs as Record<string, unknown>);
 
-      // Set the 'id' attribute to the Terraform ID (no physical AWS ID in HCL)
+      // Set the 'id' attribute to the Terraform ID (no physical cloud ID in HCL)
       attrs['id'] = tfId;
 
       // Resolve Terraform expression references in known ref attributes
-      resolveRefs(attrs);
+      resolveRefs(attrs, refAttrs, provider.refPattern);
 
       const tags = extractTags(attrs);
       const displayName =
@@ -61,7 +59,7 @@ export async function extractResourcesFromHcl(
           ? attrs['name']
           : resourceName);
 
-      const dependencies = extractDependencies(attrs);
+      const dependencies = extractDependencies(attrs, refAttrs, provider.refPattern);
 
       resources.push({
         id: tfId,
@@ -70,6 +68,7 @@ export async function extractResourcesFromHcl(
         displayName,
         attributes: attrs,
         dependencies,
+        provider: provider.id,
         tags,
       });
     }
@@ -126,16 +125,16 @@ function flattenValues(obj: Record<string, unknown>): Record<string, unknown> {
 /**
  * Resolve HCL expression references like "${aws_vpc.main.id}" or
  * "aws_vpc.main.id" to the Terraform ID "aws_vpc.main".
- * Only processes known reference attributes (vpc_id, subnet_id, etc.).
+ * Only processes known reference attributes.
  */
-function resolveRefs(attrs: Record<string, unknown>): void {
-  for (const key of REF_ATTRS) {
+function resolveRefs(attrs: Record<string, unknown>, refAttrs: string[], refPattern: RegExp): void {
+  for (const key of refAttrs) {
     const val = attrs[key];
     if (typeof val === 'string') {
-      attrs[key] = resolveExpression(val);
+      attrs[key] = resolveExpression(val, refPattern);
     } else if (Array.isArray(val)) {
       attrs[key] = val.map((v) =>
-        typeof v === 'string' ? resolveExpression(v) : v,
+        typeof v === 'string' ? resolveExpression(v, refPattern) : v,
       );
     }
   }
@@ -145,11 +144,11 @@ function resolveRefs(attrs: Record<string, unknown>): void {
  * Convert a Terraform expression like "${aws_vpc.main.id}" to "aws_vpc.main".
  * Handles both interpolation syntax and bare references.
  */
-function resolveExpression(expr: string): string {
+function resolveExpression(expr: string, refPattern: RegExp): string {
   // Strip ${ ... } wrapper
   const cleaned = expr.replace(/^\$\{(.+)\}$/, '$1').trim();
-  // Match resource reference pattern: type.name.attribute
-  const match = cleaned.match(/^(aws_\w+)\.(\w+)(?:\.\w+)?$/);
+  // Match resource reference pattern using provider-specific regex
+  const match = cleaned.match(refPattern);
   if (match) {
     return `${match[1]}.${match[2]}`;
   }
@@ -161,16 +160,21 @@ function resolveExpression(expr: string): string {
  */
 function extractDependencies(
   attrs: Record<string, unknown>,
+  refAttrs: string[],
+  refPattern: RegExp,
 ): string[] {
   const deps = new Set<string>();
-  for (const key of REF_ATTRS) {
+  for (const key of refAttrs) {
     const val = attrs[key];
-    if (typeof val === 'string' && /^aws_\w+\.\w+$/.test(val)) {
-      deps.add(val);
+    if (typeof val === 'string' && refPattern.test(val)) {
+      // Extract just the type.name part
+      const match = val.match(refPattern);
+      if (match) deps.add(`${match[1]}.${match[2]}`);
     } else if (Array.isArray(val)) {
       for (const v of val) {
-        if (typeof v === 'string' && /^aws_\w+\.\w+$/.test(v)) {
-          deps.add(v);
+        if (typeof v === 'string' && refPattern.test(v)) {
+          const match = v.match(refPattern);
+          if (match) deps.add(`${match[1]}.${match[2]}`);
         }
       }
     }

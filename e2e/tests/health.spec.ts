@@ -15,6 +15,6 @@ test.describe('Health checks', () => {
 
   test('frontend loads', async ({ page }) => {
     await page.goto('/');
-    await expect(page).toHaveTitle(/AWSArchitect/i);
+    await expect(page).toHaveTitle(/InfraGraph/i);
   });
 });

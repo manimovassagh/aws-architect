@@ -1,3 +1,7 @@
+// ─── Cloud Provider ──────────────────────────────────────────────────────────
+
+export type CloudProvider = 'aws' | 'azure' | 'gcp';
+
 // ─── AWS Resource Types ───────────────────────────────────────────────────────
 
 export type AwsResourceType =
@@ -28,25 +32,34 @@ export type AwsResourceType =
   | 'aws_api_gateway_rest_api'
   | (string & {});
 
-// ─── Core Resource Model ──────────────────────────────────────────────────────
+// ─── Generic Cloud Resource Model ────────────────────────────────────────────
 
-export interface AwsResource {
-  /** Unique ID within the graph — e.g. "aws_vpc.main" */
+export interface CloudResource {
+  /** Unique ID within the graph — e.g. "aws_vpc.main" or "azurerm_virtual_network.main" */
   id: string;
   /** Terraform resource type */
-  type: AwsResourceType;
+  type: string;
   /** Terraform resource name (the label after the type) */
   name: string;
   /** Human-readable display name */
   displayName: string;
   /** All attributes from tfstate values block */
   attributes: Record<string, unknown>;
-  /** IDs of other AwsResources this resource depends on */
+  /** IDs of other resources this resource depends on */
   dependencies: string[];
-  /** AWS region if determinable */
+  /** Cloud provider this resource belongs to */
+  provider: CloudProvider;
+  /** Cloud region if determinable */
   region?: string;
-  /** AWS tags extracted from attributes.tags */
+  /** Tags extracted from attributes */
   tags: Record<string, string>;
+}
+
+// ─── AWS-specific Resource ───────────────────────────────────────────────────
+
+export interface AwsResource extends CloudResource {
+  provider: 'aws';
+  type: AwsResourceType;
 }
 
 // ─── Graph Model (React Flow compatible) ─────────────────────────────────────
@@ -64,10 +77,11 @@ export type NodeType =
   | 'eipNode'
   | 's3Node'
   | 'lambdaNode'
-  | 'genericNode';
+  | 'genericNode'
+  | (string & {});
 
 export interface GraphNodeData {
-  resource: AwsResource;
+  resource: CloudResource;
   label: string;
   /** IDs of child nodes (for VPC → subnet → resource grouping) */
   children?: string[];
@@ -104,7 +118,9 @@ export interface ParseRequest {
 export interface ParseResponse {
   nodes: GraphNode[];
   edges: GraphEdge[];
-  resources: AwsResource[];
+  resources: CloudResource[];
+  /** Cloud provider detected or specified */
+  provider: CloudProvider;
   /** Parsing warnings (non-fatal issues) */
   warnings: string[];
 }
@@ -134,4 +150,38 @@ export interface Tfstate {
   version: number;
   terraform_version: string;
   resources: TfstateResource[];
+}
+
+// ─── Provider Configuration (contract each provider implements) ──────────────
+
+export interface ContainerTypeConfig {
+  /** Resource type that acts as a container (e.g. "aws_vpc") */
+  type: string;
+  /** Attribute on child resources that references this container (e.g. "vpc_id") */
+  parentAttr: string;
+  /** Node type for rendering this container */
+  nodeType: string;
+}
+
+export interface ProviderConfig {
+  /** Provider identifier */
+  id: CloudProvider;
+  /** Full display name (e.g. "Amazon Web Services") */
+  name: string;
+  /** Short name (e.g. "AWS") */
+  shortName: string;
+  /** Resource type prefix (e.g. "aws_") */
+  resourcePrefix: string;
+  /** Set of supported resource types */
+  supportedTypes: Set<string>;
+  /** Attribute keys that encode relationships → edge label */
+  edgeAttributes: [string, string][];
+  /** Container types with nesting hierarchy (ordered: outermost first) */
+  containerTypes: ContainerTypeConfig[];
+  /** Maps resource type → node type for rendering */
+  nodeTypeMapping: Record<string, string>;
+  /** Extract region from resource attributes */
+  extractRegion: (attrs: Record<string, unknown>) => string | undefined;
+  /** Regex pattern for resolving Terraform references (e.g. aws_\w+ or azurerm_\w+) */
+  refPattern: RegExp;
 }

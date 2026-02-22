@@ -1,9 +1,9 @@
 export const swaggerSpec = {
   openapi: '3.0.3',
   info: {
-    title: 'AWSArchitect API',
+    title: 'InfraGraph API',
     version: '1.0.0',
-    description: 'Parse Terraform state files and return interactive graph data for AWS infrastructure visualization.',
+    description: 'Parse Terraform state files and return interactive graph data for multi-cloud infrastructure visualization.',
   },
   servers: [{ url: 'http://localhost:3001', description: 'Local dev' }],
   paths: {

@@ -1,50 +1,13 @@
 import type {
   Tfstate,
-  AwsResource,
+  CloudResource,
   GraphNode,
   GraphEdge,
   NodeType,
   ParseResponse,
-} from '@awsarchitect/shared';
+  ProviderConfig,
+} from '@infragraph/shared';
 import { extractResources } from './tfstate.js';
-
-// ─── NodeType mapping ─────────────────────────────────────────────────────────
-
-function nodeTypeFor(resourceType: string): NodeType {
-  switch (resourceType) {
-    case 'aws_vpc':                   return 'vpcNode';
-    case 'aws_subnet':                return 'subnetNode';
-    case 'aws_internet_gateway':      return 'igwNode';
-    case 'aws_nat_gateway':           return 'natNode';
-    case 'aws_route_table':
-    case 'aws_route_table_association': return 'routeTableNode';
-    case 'aws_security_group':        return 'securityGroupNode';
-    case 'aws_instance':              return 'ec2Node';
-    case 'aws_db_instance':           return 'rdsNode';
-    case 'aws_lb':
-    case 'aws_alb':                   return 'lbNode';
-    case 'aws_eip':                   return 'eipNode';
-    case 'aws_s3_bucket':             return 's3Node';
-    case 'aws_lambda_function':       return 'lambdaNode';
-    default:                          return 'genericNode';
-  }
-}
-
-// ─── Attribute keys that encode parent relationships ─────────────────────────
-//
-// Maps: attribute key → label for the resulting edge
-
-const EDGE_ATTRS: [string, string][] = [
-  ['vpc_id',                    'in vpc'],
-  ['subnet_id',                 'in subnet'],
-  ['security_groups',           'secured by'],
-  ['vpc_security_group_ids',    'secured by'],
-  ['nat_gateway_id',            'routes via'],
-  ['internet_gateway_id',       'routes via'],
-  ['instance_id',               'attached to'],
-  ['allocation_id',             'uses eip'],
-  ['load_balancer_arn',         'behind lb'],
-];
 
 // ─── Layout constants ─────────────────────────────────────────────────────────
 
@@ -72,34 +35,41 @@ function subnetSize(childCount: number): { w: number; h: number } {
   return { w: Math.max(w, 260), h: Math.max(h, 120) };
 }
 
+// ─── NodeType lookup from provider config ────────────────────────────────────
+
+function nodeTypeFor(resourceType: string, provider: ProviderConfig): NodeType {
+  return provider.nodeTypeMapping[resourceType] ?? 'genericNode';
+}
+
 // ─── Main builder ─────────────────────────────────────────────────────────────
 
 /**
  * Build a graph from pre-extracted resources (works for both tfstate and HCL sources).
  */
 export function buildGraphFromResources(
-  resources: AwsResource[],
+  resources: CloudResource[],
   warnings: string[],
+  provider: ProviderConfig,
 ): ParseResponse {
 
-  // Pass 1: build a Map from AWS IDs (e.g. "vpc-0abc") → Terraform IDs (e.g. "aws_vpc.main")
-  const awsIdToTfId = new Map<string, string>();
+  // Pass 1: build a Map from cloud IDs (e.g. "vpc-0abc") → Terraform IDs (e.g. "aws_vpc.main")
+  const cloudIdToTfId = new Map<string, string>();
   for (const r of resources) {
-    const awsId = r.attributes['id'];
-    if (typeof awsId === 'string' && awsId) {
-      awsIdToTfId.set(awsId, r.id);
+    const cloudId = r.attributes['id'];
+    if (typeof cloudId === 'string' && cloudId) {
+      cloudIdToTfId.set(cloudId, r.id);
     }
   }
 
-  // Helper: resolve an AWS ID or Terraform ID to a known Terraform ID
+  // Helper: resolve a cloud ID or Terraform ID to a known Terraform ID
   function resolve(value: string): string | undefined {
-    if (awsIdToTfId.has(value)) return awsIdToTfId.get(value);
+    if (cloudIdToTfId.has(value)) return cloudIdToTfId.get(value);
     // Already a Terraform ID (e.g. "aws_vpc.main") — validate it exists
     if (resources.some((r) => r.id === value)) return value;
     return undefined;
   }
 
-  // Pass 2: build edges
+  // Pass 2: build edges using provider's edge attributes
   const seenEdges = new Set<string>();
   const edges: GraphEdge[] = [];
 
@@ -112,7 +82,7 @@ export function buildGraphFromResources(
 
   for (const r of resources) {
     // Attribute-based edges
-    for (const [attrKey, edgeLabel] of EDGE_ATTRS) {
+    for (const [attrKey, edgeLabel] of provider.edgeAttributes) {
       const val = r.attributes[attrKey];
       if (!val) continue;
 
@@ -133,150 +103,160 @@ export function buildGraphFromResources(
     }
   }
 
-  // Pass 3: determine parent assignments
-  // parentOf[child.id] = parent.id
+  // Pass 3: determine parent assignments using provider's container types
   const parentOf = new Map<string, string>();
 
-  // Index VPCs and subnets for quick lookup
-  const vpcByAwsId = new Map<string, string>(); // AWS vpc-id → tf id
-  const subnetByAwsId = new Map<string, string>(); // AWS subnet-id → tf id
+  // Container type config from provider (outermost first: VPC, then subnet)
+  const outerContainer = provider.containerTypes[0]; // e.g. VPC / VNet
+  const innerContainer = provider.containerTypes[1]; // e.g. Subnet
+
+  // Index containers for quick lookup
+  const outerByCloudId = new Map<string, string>(); // cloud id → tf id
+  const innerByCloudId = new Map<string, string>(); // cloud id → tf id
 
   for (const r of resources) {
-    const awsId = r.attributes['id'];
-    if (typeof awsId !== 'string') continue;
-    if (r.type === 'aws_vpc') vpcByAwsId.set(awsId, r.id);
-    if (r.type === 'aws_subnet') subnetByAwsId.set(awsId, r.id);
+    const cloudId = r.attributes['id'];
+    if (typeof cloudId !== 'string') continue;
+    if (outerContainer && r.type === outerContainer.type) outerByCloudId.set(cloudId, r.id);
+    if (innerContainer && r.type === innerContainer.type) innerByCloudId.set(cloudId, r.id);
   }
 
   for (const r of resources) {
-    if (r.type === 'aws_vpc') continue; // VPCs are root
+    if (outerContainer && r.type === outerContainer.type) continue; // outer containers are root
 
-    // Prefer subnet_id → place inside subnet
-    const subnetId = r.attributes['subnet_id'];
-    if (typeof subnetId === 'string' && subnetByAwsId.has(subnetId)) {
-      parentOf.set(r.id, subnetByAwsId.get(subnetId)!);
-      continue;
+    // Prefer inner container placement (e.g. subnet_id → place inside subnet)
+    if (innerContainer) {
+      const innerRef = r.attributes[innerContainer.parentAttr];
+      if (typeof innerRef === 'string' && innerByCloudId.has(innerRef)) {
+        parentOf.set(r.id, innerByCloudId.get(innerRef)!);
+        continue;
+      }
+
+      // subnet_ids[] — use first
+      const innerRefs = r.attributes[innerContainer.parentAttr + 's'];
+      if (Array.isArray(innerRefs) && innerRefs.length > 0) {
+        const first = innerRefs[0];
+        if (typeof first === 'string' && innerByCloudId.has(first)) {
+          parentOf.set(r.id, innerByCloudId.get(first)!);
+          continue;
+        }
+      }
     }
 
-    // subnet_ids[] — use first subnet
-    const subnetIds = r.attributes['subnet_ids'];
-    if (Array.isArray(subnetIds) && subnetIds.length > 0) {
-      const first = subnetIds[0];
-      if (typeof first === 'string' && subnetByAwsId.has(first)) {
-        parentOf.set(r.id, subnetByAwsId.get(first)!);
+    // Place inner container inside outer container
+    if (innerContainer && outerContainer && r.type === innerContainer.type) {
+      const outerRef = r.attributes[outerContainer.parentAttr];
+      if (typeof outerRef === 'string' && outerByCloudId.has(outerRef)) {
+        parentOf.set(r.id, outerByCloudId.get(outerRef)!);
         continue;
       }
     }
 
-    // Place subnet inside its VPC
-    if (r.type === 'aws_subnet') {
-      const vpcId = r.attributes['vpc_id'];
-      if (typeof vpcId === 'string' && vpcByAwsId.has(vpcId)) {
-        parentOf.set(r.id, vpcByAwsId.get(vpcId)!);
-        continue;
+    // Place resources directly attached to outer container
+    if (outerContainer) {
+      const outerRef = r.attributes[outerContainer.parentAttr];
+      if (typeof outerRef === 'string' && outerByCloudId.has(outerRef)) {
+        parentOf.set(r.id, outerByCloudId.get(outerRef)!);
       }
-    }
-
-    // Place VPC-attached resources (IGW, SG, NAT, route tables) inside VPC
-    const vpcId = r.attributes['vpc_id'];
-    if (typeof vpcId === 'string' && vpcByAwsId.has(vpcId)) {
-      parentOf.set(r.id, vpcByAwsId.get(vpcId)!);
     }
   }
 
   // Pass 4: layout — collect children per parent
   const childrenOf = new Map<string, string[]>();
-  const rootResources: AwsResource[] = [];
+  const rootResources: CloudResource[] = [];
+  const outerContainerType = outerContainer?.type;
 
   for (const r of resources) {
     const p = parentOf.get(r.id);
     if (p) {
       if (!childrenOf.has(p)) childrenOf.set(p, []);
       childrenOf.get(p)!.push(r.id);
-    } else if (r.type !== 'aws_vpc') {
+    } else if (r.type !== outerContainerType) {
       rootResources.push(r);
     }
   }
 
-  // Separate VPCs
-  const vpcs = resources.filter((r) => r.type === 'aws_vpc');
+  // Separate outer containers (VPCs / VNets)
+  const outerContainers = outerContainerType
+    ? resources.filter((r) => r.type === outerContainerType)
+    : [];
 
   // Build nodes
   const nodesMap = new Map<string, GraphNode>();
+  const innerContainerType = innerContainer?.type;
 
-  // VPC nodes — dynamic sizing based on content
-  let vpcYOffset = 0;
-  vpcs.forEach((vpc) => {
-    const subnets = resources.filter(
-      (r) => r.type === 'aws_subnet' && parentOf.get(r.id) === vpc.id
-    );
+  // Outer container nodes — dynamic sizing based on content
+  let outerYOffset = 0;
+  outerContainers.forEach((outer) => {
+    const innerNodes = innerContainerType
+      ? resources.filter((r) => r.type === innerContainerType && parentOf.get(r.id) === outer.id)
+      : [];
 
-    // Precompute subnet sizes based on their children
-    const subnetData = subnets.map((subnet) => {
-      const children = resources.filter((r) => parentOf.get(r.id) === subnet.id);
+    // Precompute inner container sizes based on their children
+    const innerData = innerNodes.map((inner) => {
+      const children = resources.filter((r) => parentOf.get(r.id) === inner.id);
       const size = subnetSize(children.length);
-      return { subnet, children, ...size };
+      return { subnet: inner, children, ...size };
     });
 
-    // Lay out subnets in a 2-column grid (wraps to multiple rows)
-    const SUBNET_MAX_COLS = 2;
-    let maxSubnetBottom = VPC_PAD_Y;
-    const subnetPositions: { x: number; y: number; w: number; h: number }[] = [];
+    // Lay out inner containers in a 2-column grid
+    const INNER_MAX_COLS = 2;
+    let maxInnerBottom = VPC_PAD_Y;
+    const innerPositions: { x: number; y: number; w: number; h: number }[] = [];
 
-    // Group subnets into rows of SUBNET_MAX_COLS
     let rowY = VPC_PAD_Y;
-    for (let i = 0; i < subnetData.length; i += SUBNET_MAX_COLS) {
-      const rowItems = subnetData.slice(i, i + SUBNET_MAX_COLS);
+    for (let i = 0; i < innerData.length; i += INNER_MAX_COLS) {
+      const rowItems = innerData.slice(i, i + INNER_MAX_COLS);
       const rowHeight = Math.max(...rowItems.map((sd) => sd.h));
       let colX = VPC_PAD_X;
       for (const sd of rowItems) {
-        subnetPositions.push({ x: colX, y: rowY, w: sd.w, h: sd.h });
+        innerPositions.push({ x: colX, y: rowY, w: sd.w, h: sd.h });
         colX += sd.w + SUBNET_GAP_X;
       }
       rowY += rowHeight + SUBNET_GAP_Y;
-      maxSubnetBottom = rowY - SUBNET_GAP_Y;
+      maxInnerBottom = rowY - SUBNET_GAP_Y;
     }
 
-    // VPC-direct children (IGW, SG, etc.)
-    const vpcDirectChildren = resources.filter(
-      (r) => parentOf.get(r.id) === vpc.id && r.type !== 'aws_subnet'
+    // Outer-direct children (IGW, SG, etc.)
+    const outerDirectChildren = resources.filter(
+      (r) => parentOf.get(r.id) === outer.id && r.type !== innerContainerType
     );
-    const directCols = Math.min(vpcDirectChildren.length, 3);
-    const directRows = Math.ceil(vpcDirectChildren.length / 3) || 0;
-    const directStartY = maxSubnetBottom + SUBNET_GAP_Y;
+    const directCols = Math.min(outerDirectChildren.length, 3);
+    const directRows = Math.ceil(outerDirectChildren.length / 3) || 0;
+    const directStartY = maxInnerBottom + SUBNET_GAP_Y;
     const directBottom = directRows > 0
       ? directStartY + directRows * RESOURCE_H + (directRows - 1) * RESOURCE_GAP_Y
-      : maxSubnetBottom;
+      : maxInnerBottom;
 
-    // VPC dimensions — widest subnet row determines width
+    // Outer container dimensions
     let maxRowWidth = 0;
-    for (let i = 0; i < subnetPositions.length; i += SUBNET_MAX_COLS) {
-      const rowItems = subnetPositions.slice(i, i + SUBNET_MAX_COLS);
+    for (let i = 0; i < innerPositions.length; i += INNER_MAX_COLS) {
+      const rowItems = innerPositions.slice(i, i + INNER_MAX_COLS);
       const last = rowItems[rowItems.length - 1]!;
       const rowWidth = last.x + last.w + VPC_PAD_X;
       maxRowWidth = Math.max(maxRowWidth, rowWidth);
     }
     const directWidth = VPC_PAD_X * 2 + directCols * RESOURCE_W + Math.max(0, directCols - 1) * RESOURCE_GAP_X;
-    const vpcW = Math.max(maxRowWidth, directWidth, 500);
-    const vpcH = directBottom + VPC_PAD_Y;
+    const outerW = Math.max(maxRowWidth, directWidth, 500);
+    const outerH = directBottom + VPC_PAD_Y;
 
-    nodesMap.set(vpc.id, {
-      id: vpc.id,
-      type: 'vpcNode',
-      position: { x: 0, y: vpcYOffset },
-      data: { resource: vpc, label: vpc.displayName },
-      style: { width: vpcW, height: vpcH },
+    nodesMap.set(outer.id, {
+      id: outer.id,
+      type: nodeTypeFor(outer.type, provider),
+      position: { x: 0, y: outerYOffset },
+      data: { resource: outer, label: outer.displayName },
+      style: { width: outerW, height: outerH },
     });
 
-    // Place subnets and their children
-    subnetData.forEach((sd, j) => {
-      const sp = subnetPositions[j]!;
+    // Place inner containers and their children
+    innerData.forEach((sd, j) => {
+      const sp = innerPositions[j]!;
       nodesMap.set(sd.subnet.id, {
         id: sd.subnet.id,
-        type: 'subnetNode',
+        type: nodeTypeFor(sd.subnet.type, provider),
         position: { x: sp.x, y: sp.y },
         data: { resource: sd.subnet, label: sd.subnet.displayName },
-        parentNode: vpc.id,
+        parentNode: outer.id,
         extent: 'parent',
         style: { width: sp.w, height: sp.h },
       });
@@ -286,7 +266,7 @@ export function buildGraphFromResources(
         const row = Math.floor(k / SUBNET_COLS);
         nodesMap.set(child.id, {
           id: child.id,
-          type: nodeTypeFor(child.type),
+          type: nodeTypeFor(child.type, provider),
           position: {
             x: SUBNET_PAD_X + col * (RESOURCE_W + RESOURCE_GAP_X),
             y: SUBNET_PAD_Y + row * (RESOURCE_H + RESOURCE_GAP_Y),
@@ -299,36 +279,36 @@ export function buildGraphFromResources(
       });
     });
 
-    // Place VPC-direct children below subnets
-    vpcDirectChildren.forEach((child, k) => {
+    // Place outer-direct children below inner containers
+    outerDirectChildren.forEach((child, k) => {
       if (nodesMap.has(child.id)) return;
       const col = k % 3;
       const row = Math.floor(k / 3);
       nodesMap.set(child.id, {
         id: child.id,
-        type: nodeTypeFor(child.type),
+        type: nodeTypeFor(child.type, provider),
         position: {
           x: VPC_PAD_X + col * (RESOURCE_W + RESOURCE_GAP_X),
           y: directStartY + row * (RESOURCE_H + RESOURCE_GAP_Y),
         },
         data: { resource: child, label: child.displayName },
-        parentNode: vpc.id,
+        parentNode: outer.id,
         extent: 'parent',
         style: { width: RESOURCE_W, height: RESOURCE_H },
       });
     });
 
-    vpcYOffset += vpcH + VPC_GAP;
+    outerYOffset += outerH + VPC_GAP;
   });
 
-  // Root-level nodes (outside VPC) — grouped by type, positioned to the right
+  // Root-level nodes (outside outer container) — grouped by type, positioned to the right
   const rootX = Math.max(
     ...Array.from(nodesMap.values()).map((n) => (n.position?.x ?? 0) + ((n.style?.width as number) ?? 0)),
     500
   ) + 60;
 
   // Group root resources by type for visual clustering
-  const rootByType = new Map<string, AwsResource[]>();
+  const rootByType = new Map<string, CloudResource[]>();
   for (const r of rootResources) {
     if (!rootByType.has(r.type)) rootByType.set(r.type, []);
     rootByType.get(r.type)!.push(r);
@@ -339,7 +319,7 @@ export function buildGraphFromResources(
     for (const r of group) {
       nodesMap.set(r.id, {
         id: r.id,
-        type: nodeTypeFor(r.type),
+        type: nodeTypeFor(r.type, provider),
         position: { x: rootX, y: rootY },
         data: { resource: r, label: r.displayName },
         style: { width: RESOURCE_W, height: RESOURCE_H },
@@ -364,6 +344,7 @@ export function buildGraphFromResources(
     nodes: Array.from(nodesMap.values()),
     edges: validEdges,
     resources,
+    provider: provider.id,
     warnings,
   };
 }
@@ -371,7 +352,7 @@ export function buildGraphFromResources(
 /**
  * Convenience wrapper: parse a Tfstate and build the graph in one step.
  */
-export function buildGraph(tfstate: Tfstate): ParseResponse {
-  const { resources, warnings } = extractResources(tfstate);
-  return buildGraphFromResources(resources, warnings);
+export function buildGraph(tfstate: Tfstate, provider: ProviderConfig): ParseResponse {
+  const { resources, warnings } = extractResources(tfstate, provider);
+  return buildGraphFromResources(resources, warnings, provider);
 }

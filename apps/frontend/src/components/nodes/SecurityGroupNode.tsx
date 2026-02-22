@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps } from 'reactflow';
-import type { GraphNodeData } from '@awsarchitect/shared';
+import type { GraphNodeData } from '@infragraph/shared';
 import { SecurityGroupIcon } from './icons/AwsIcons';
 
 export function SecurityGroupNode({ data, selected }: NodeProps<GraphNodeData>) {

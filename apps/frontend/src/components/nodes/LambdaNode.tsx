@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps } from 'reactflow';
-import type { GraphNodeData } from '@awsarchitect/shared';
+import type { GraphNodeData } from '@infragraph/shared';
 import { LambdaIcon } from './icons/AwsIcons';
 
 export function LambdaNode({ data, selected }: NodeProps<GraphNodeData>) {

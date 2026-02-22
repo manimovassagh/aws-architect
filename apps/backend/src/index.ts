@@ -19,6 +19,6 @@ app.get('/health', (_req, res) => {
 app.use('/api', parseRouter);
 
 app.listen(PORT, () => {
-  console.log(`AWSArchitect backend running on http://localhost:${PORT}`);
+  console.log(`InfraGraph backend running on http://localhost:${PORT}`);
   console.log(`Swagger docs at http://localhost:${PORT}/docs`);
 });
