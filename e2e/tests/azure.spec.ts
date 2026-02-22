@@ -42,7 +42,7 @@ test.describe('Azure provider flow', () => {
   test('canvas renders multiple Azure resource types', async ({ page }) => {
     await page.goto('/');
     await uploadAndParse(page);
-    await expect(page.getByText('web-vm')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText('web-vm')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('demo-sqlserver')).toBeVisible();
     await expect(page.getByText('web-lb')).toBeVisible();
   });

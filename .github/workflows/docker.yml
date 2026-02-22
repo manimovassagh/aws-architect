@@ -11,7 +11,6 @@ env:
 permissions:
   contents: read
   packages: write
-  security-events: write
 
 jobs:
   build-and-push:
@@ -58,12 +57,5 @@ jobs:
         uses: aquasecurity/trivy-action@0.34.1
         with:
           image-ref: ${{ env.IMAGE_PREFIX }}-${{ matrix.app }}:latest
-          format: sarif
-          output: trivy-${{ matrix.app }}.sarif
+          format: table
           severity: CRITICAL,HIGH
-
-      - name: Upload Trivy SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: trivy-${{ matrix.app }}.sarif

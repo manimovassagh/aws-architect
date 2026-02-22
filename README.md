@@ -8,7 +8,7 @@ Visualize your Terraform infrastructure as interactive architecture diagrams. Up
 
 ## Features
 
-- **Multi-cloud ready** — AWS fully supported; Azure and GCP coming soon
+- **Multi-cloud** — AWS, Azure, and GCP fully supported
 - Parse Terraform state files (`.tfstate`) and HCL source files (`.tf`)
 - Auto-layout: VPC > Subnet > Resource hierarchy with nested containers
 - Interactive React Flow canvas with zoom, pan, minimap, and dark mode
@@ -135,8 +135,8 @@ Swagger docs available at http://localhost:3001/docs.
 | Provider | Status | Resource Types |
 |----------|--------|----------------|
 | **AWS** | Supported | VPC, Subnet, EC2, RDS, S3, Lambda, ECS, EKS, ALB, and 20+ more |
-| **Azure** | Coming soon | VNet, VM, Storage, SQL, Functions, and more |
-| **GCP** | Coming soon | VPC, Compute, Cloud SQL, GCS, Cloud Functions |
+| **Azure** | Supported | VNet, Subnet, VM, Storage, SQL, Functions, NSG, Public IP, LB, AKS, and more |
+| **GCP** | Supported | VPC, Subnet, Compute, Cloud SQL, GCS, Functions, Firewall, LB, GKE, and more |
 
 ## Test Fixtures
 

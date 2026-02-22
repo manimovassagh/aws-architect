@@ -48,7 +48,7 @@ jobs:
           path: |
             packages/shared/dist
             apps/backend/dist
-            apps/frontend/.next
+            apps/frontend/dist
           retention-days: 1
 
   # ─── Tests (need build artifacts) ──────────────────────────────

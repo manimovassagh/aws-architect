@@ -24,7 +24,7 @@ async function uploadAndParse(page: import('@playwright/test').Page) {
 test.describe('Upload flow', () => {
   test('shows provider selection on initial load', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText(/Select a cloud provider/i)).toBeVisible();
+    await expect(page.getByText(/Select your cloud provider/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /Amazon Web Services/i })).toBeVisible();
   });
 
