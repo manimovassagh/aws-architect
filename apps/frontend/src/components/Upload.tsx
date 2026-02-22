@@ -147,11 +147,11 @@ export function Upload({ onSubmit }: UploadProps) {
           : 'border-slate-300 dark:border-slate-600';
 
   return (
-    <div
+    <label
+      htmlFor={state !== 'ready' ? 'upload-file-input' : undefined}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      onClick={() => state !== 'ready' && fileInputRef.current?.click()}
       className={`
         upload-glow flex flex-col items-center justify-center gap-3 rounded-xl border-[3px] border-dashed
         p-8 transition-all bg-white dark:bg-white/10 backdrop-blur-sm cursor-pointer
@@ -160,6 +160,7 @@ export function Upload({ onSubmit }: UploadProps) {
     >
       <input
         ref={fileInputRef}
+        id="upload-file-input"
         type="file"
         accept={ALL_EXTENSIONS.join(',')}
         multiple
@@ -230,6 +231,6 @@ export function Upload({ onSubmit }: UploadProps) {
           </button>
         </>
       )}
-    </div>
+    </label>
   );
 }
