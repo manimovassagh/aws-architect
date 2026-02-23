@@ -7,6 +7,10 @@ const DocsPage = lazy(() =>
   import('@/components/DocsPage').then((m) => ({ default: m.DocsPage }))
 );
 
+const HistoryPage = lazy(() =>
+  import('@/components/HistoryPage').then((m) => ({ default: m.HistoryPage }))
+);
+
 function PageLoader() {
   return (
     <div className="flex items-center justify-center min-h-screen">
@@ -49,6 +53,7 @@ export default function App() {
         <Route path="/docs" element={<DocsPage />} />
         <Route path="/api" element={<DocsPage />} />
         <Route path="/ai" element={<ComingSoonPage />} />
+        <Route path="/history" element={<HistoryPage />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
       </Routes>
     </Suspense>
