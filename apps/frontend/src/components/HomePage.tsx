@@ -63,10 +63,10 @@ export function HomePage() {
   useEffect(() => {
     const raw = sessionStorage.getItem('loadSession');
     if (!raw) return;
-    sessionStorage.removeItem('loadSession');
     try {
       const session = JSON.parse(raw) as { provider: CloudProvider; fileName: string; data: ParseResponse };
       getProviderFrontendConfig(session.provider).then((config) => {
+        sessionStorage.removeItem('loadSession');
         setProviderConfig(config);
         setState({
           view: 'canvas',
@@ -75,12 +75,11 @@ export function HomePage() {
           selectedNodeId: null,
           fileName: session.fileName,
         });
-        navigate('/canvas', { replace: true });
       });
     } catch {
-      // Corrupted session data — ignore
+      sessionStorage.removeItem('loadSession');
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -225,7 +224,8 @@ export function HomePage() {
   }
 
   // Direct /canvas access with no data → redirect to landing
-  if (location.pathname === '/canvas' && state.view !== 'canvas') {
+  // (but allow through if session is being hydrated from /history)
+  if (location.pathname === '/canvas' && state.view !== 'canvas' && !sessionStorage.getItem('loadSession')) {
     return <Navigate to="/" replace />;
   }
 

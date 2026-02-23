@@ -72,7 +72,7 @@ export function HistoryPage() {
         fileName: session.fileName,
         data: session.data,
       }));
-      navigate('/');
+      navigate('/canvas');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load session');
     }
