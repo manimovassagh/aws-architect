@@ -11,6 +11,7 @@ import { ResourceSummary } from '@/components/ResourceSummary';
 import { SearchBar, type SearchBarHandle } from '@/components/SearchBar';
 import { parseFile, parseHcl, saveSession } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
+import { UserMenu } from '@/components/UserMenu';
 
 const PROVIDER_META: Record<string, { label: string; color: string }> = {
   aws: { label: 'AWS', color: '#FF9900' },
@@ -354,13 +355,15 @@ export function HomePage() {
                 </svg>
                 Home
               </button>
+              <div className="w-px h-5 bg-slate-200 dark:bg-slate-700" />
+              <UserMenu />
               </div>
             </div>
-            {/* Provider badge — bottom-left */}
+            {/* Provider badge — top-left below toolbar */}
             {(() => {
               const meta = PROVIDER_META[state.provider] ?? { label: state.provider, color: '#6B7280' };
               return (
-                <div className="absolute bottom-4 left-4 z-10 flex items-center gap-3 rounded-xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 px-4 py-2.5 shadow-lg">
+                <div className="absolute top-16 left-3 z-10 flex items-center gap-3 rounded-xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 px-4 py-2.5 shadow-lg">
                   <span
                     className="text-2xl font-bold tracking-tight"
                     style={{ color: meta.color }}

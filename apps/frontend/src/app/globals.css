@@ -197,9 +197,19 @@
   animation: gradient 4s ease infinite;
 }
 
+/* Detail panel slide-in */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.animate-slide-in {
+  animation: slide-in-right 0.2s ease-out;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .text-gradient { animation: none; }
   .text-gradient-light { animation: none; }
   .landing-card:hover { transform: none; }
+  .animate-slide-in { animation: none; }
 }

@@ -26,7 +26,7 @@ export function ResourceSummary({ resources, hiddenTypes, providerConfig, onTogg
     : resources.length;
 
   return (
-    <div className="absolute top-3 left-3 z-10 flex items-center gap-1 rounded-lg bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 px-3 py-1.5 shadow-sm">
+    <div className="flex items-center gap-1 shrink-0">
       <span className="text-xs font-medium text-slate-400 mr-1">{visibleCount} resources</span>
       <span className="text-slate-200 dark:text-slate-600">|</span>
       {entries.map(([type, count]) => {
