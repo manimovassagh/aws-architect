@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import { HomePage } from '@/components/HomePage';
+import { AuthCallback } from '@/components/AuthCallback';
 
 const DocsPage = lazy(() =>
   import('@/components/DocsPage').then((m) => ({ default: m.DocsPage }))
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="/docs" element={<DocsPage />} />
         <Route path="/api" element={<DocsPage />} />
         <Route path="/ai" element={<ComingSoonPage />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
       </Routes>
     </Suspense>
   );
