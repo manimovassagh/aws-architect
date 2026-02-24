@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { exchangeGitHubCode } from '@/lib/api';
 
 export function GitHubCallbackPage() {
@@ -14,14 +14,15 @@ export function GitHubCallbackPage() {
     code ? '' : 'No authorization code received from GitHub.',
   );
 
-  useEffect(() => {
-    if (!code) return;
+  // Prevent double-exchange in React 18 StrictMode (codes are single-use)
+  const exchanged = useRef(false);
 
-    let cancelled = false;
+  useEffect(() => {
+    if (!code || exchanged.current) return;
+    exchanged.current = true;
 
     exchangeGitHubCode(code).then(
       (result) => {
-        if (cancelled) return;
         // Send token back to parent window
         if (window.opener) {
           window.opener.postMessage(
@@ -38,13 +39,10 @@ export function GitHubCallbackPage() {
         setTimeout(() => window.close(), 1000);
       },
       (err: unknown) => {
-        if (cancelled) return;
         setStatus('error');
         setErrorMsg(err instanceof Error ? err.message : 'Authentication failed');
       },
     );
-
-    return () => { cancelled = true; };
   }, [code]);
 
   return (
