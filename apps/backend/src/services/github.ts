@@ -11,7 +11,7 @@ function ghHeaders(token?: string): Record<string, string> {
     Accept: 'application/vnd.github.v3+json',
     'User-Agent': 'InfraGraph',
   };
-  if (token) h.Authorization = `token ${token}`;
+  if (token) h.Authorization = `Bearer ${token}`;
   return h;
 }
 
