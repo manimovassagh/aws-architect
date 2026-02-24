@@ -1,12 +1,18 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import type { ApiError, GitHubScanResponse } from '@infragraph/shared';
-import { parseRepoUrl, scanRepo, fetchTfFiles } from '../services/github.js';
+import { parseRepoUrl, scanRepo, fetchTfFiles, exchangeCode, listUserRepos } from '../services/github.js';
 import { extractResourcesFromHcl } from '../parser/hcl.js';
 import { buildGraphFromResources } from '../parser/graph.js';
 import { detectProviderFromTypes } from '../providers/index.js';
 
 export const githubRouter = Router();
+
+/** Extract optional GitHub token from request header. */
+function getGitHubToken(req: { headers: Record<string, string | string[] | undefined> }): string | undefined {
+  const header = req.headers['x-github-token'];
+  return typeof header === 'string' ? header : undefined;
+}
 
 const ScanSchema = z.object({
   repoUrl: z.string().url().refine(
@@ -20,6 +26,48 @@ const ParseSchema = z.object({
   projectPath: z.string().min(1),
 });
 
+const TokenSchema = z.object({
+  code: z.string().min(1),
+});
+
+// POST /api/github/token — exchange OAuth code for access token
+githubRouter.post('/github/token', async (req, res) => {
+  const parsed = TokenSchema.safeParse(req.body);
+  if (!parsed.success) {
+    const err: ApiError = { error: 'Invalid request', details: parsed.error.message };
+    res.status(400).json(err);
+    return;
+  }
+
+  try {
+    const result = await exchangeCode(parsed.data.code);
+    res.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Token exchange failed';
+    const apiErr: ApiError = { error: 'GitHub authentication failed', details: message };
+    res.status(422).json(apiErr);
+  }
+});
+
+// GET /api/github/repos — list authenticated user's repositories
+githubRouter.get('/github/repos', async (req, res) => {
+  const token = getGitHubToken(req);
+  if (!token) {
+    const err: ApiError = { error: 'Missing X-GitHub-Token header' };
+    res.status(401).json(err);
+    return;
+  }
+
+  try {
+    const repos = await listUserRepos(token);
+    res.json(repos);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to list repos';
+    const apiErr: ApiError = { error: 'Failed to list repositories', details: message };
+    res.status(422).json(apiErr);
+  }
+});
+
 // POST /api/github/scan — scan a repo for Terraform projects
 githubRouter.post('/github/scan', async (req, res) => {
   const parsed = ScanSchema.safeParse(req.body);
@@ -30,8 +78,9 @@ githubRouter.post('/github/scan', async (req, res) => {
   }
 
   try {
+    const token = getGitHubToken(req);
     const { owner, repo } = parseRepoUrl(parsed.data.repoUrl);
-    const { defaultBranch, projects } = await scanRepo(owner, repo);
+    const { defaultBranch, projects } = await scanRepo(owner, repo, 'main', token);
 
     if (projects.length === 0) {
       const err: ApiError = { error: 'No Terraform projects found', details: 'This repository does not contain any .tf files' };
@@ -58,10 +107,11 @@ githubRouter.post('/github/parse', async (req, res) => {
   }
 
   try {
+    const token = getGitHubToken(req);
     const { owner, repo } = parseRepoUrl(parsed.data.repoUrl);
 
     // First scan to get the branch and file list
-    const { defaultBranch, projects } = await scanRepo(owner, repo);
+    const { defaultBranch, projects } = await scanRepo(owner, repo, 'main', token);
     const project = projects.find((p) => p.path === parsed.data.projectPath);
     if (!project) {
       const err: ApiError = { error: 'Project not found', details: `No .tf files in ${parsed.data.projectPath}` };
@@ -70,7 +120,7 @@ githubRouter.post('/github/parse', async (req, res) => {
     }
 
     // Fetch .tf file contents
-    const fileMap = await fetchTfFiles(owner, repo, defaultBranch, project.path, project.files);
+    const fileMap = await fetchTfFiles(owner, repo, defaultBranch, project.path, project.files, token);
 
     // Detect provider from HCL resource types
     const { parse: parseHcl } = await import('@cdktf/hcl2json');

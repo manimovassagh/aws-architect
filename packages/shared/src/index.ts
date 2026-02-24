@@ -216,6 +216,22 @@ export interface GitHubParseRequest {
   projectPath: string;
 }
 
+export interface GitHubRepo {
+  name: string;
+  full_name: string;
+  description: string | null;
+  private: boolean;
+  pushed_at: string;
+  default_branch: string;
+  html_url: string;
+}
+
+export interface GitHubTokenResponse {
+  access_token: string;
+  username: string;
+  avatar_url: string;
+}
+
 // ─── Provider Configuration (contract each provider implements) ──────────────
 
 export interface ContainerTypeConfig {
