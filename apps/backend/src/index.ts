@@ -5,6 +5,7 @@ import swaggerUi from 'swagger-ui-express';
 import { parseRouter } from './routes/parse.js';
 import { sessionsRouter } from './routes/sessions.js';
 import { userRouter } from './routes/user.js';
+import { githubRouter } from './routes/github.js';
 import { swaggerSpec } from './swagger.js';
 import { optionalAuth } from './middleware/auth.js';
 
@@ -24,6 +25,7 @@ app.get('/health', (_req, res) => {
 app.use('/api', parseRouter);
 app.use('/api', sessionsRouter);
 app.use('/api', userRouter);
+app.use('/api', githubRouter);
 
 // Global error handler — catches unhandled errors from middleware (e.g. multer)
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
