@@ -189,6 +189,33 @@ export interface CreateSessionRequest {
   data: ParseResponse;
 }
 
+// ─── GitHub Connect ─────────────────────────────────────────────────────────
+
+export interface GitHubTerraformProject {
+  /** Directory path relative to repo root (e.g. "03-aws-s3-bucket") */
+  path: string;
+  /** List of .tf file names in this directory */
+  files: string[];
+  /** Number of resource blocks detected (quick scan) */
+  resourceCount: number;
+}
+
+export interface GitHubScanRequest {
+  repoUrl: string;
+}
+
+export interface GitHubScanResponse {
+  owner: string;
+  repo: string;
+  defaultBranch: string;
+  projects: GitHubTerraformProject[];
+}
+
+export interface GitHubParseRequest {
+  repoUrl: string;
+  projectPath: string;
+}
+
 // ─── Provider Configuration (contract each provider implements) ──────────────
 
 export interface ContainerTypeConfig {
