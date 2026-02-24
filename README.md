@@ -1,6 +1,6 @@
 # InfraGraph
 
-Visualize your Terraform infrastructure as interactive architecture diagrams. Upload `.tfstate` or `.tf` source files and get a live, zoomable canvas showing VPCs, subnets, and resources with their relationships.
+Visualize your Terraform infrastructure as interactive architecture diagrams. Upload files, connect a GitHub repo, or call the REST API — InfraGraph auto-detects your cloud provider and renders a live, zoomable canvas with VPCs, subnets, and resources.
 
 ![InfraGraph Landing Page](docs/infragraph-landing.png)
 
@@ -10,20 +10,23 @@ Visualize your Terraform infrastructure as interactive architecture diagrams. Up
 
 ## Features
 
-- **Multi-cloud** — AWS, Azure, and GCP fully supported with branded icons
+- **Multi-cloud** — AWS (20+), Azure (12+), and GCP (11+) resource types with branded icons
+- **GitHub Integration** — Connect your GitHub account, browse repos (including private), scan for Terraform projects, and visualize directly
+- **REST API** — Full programmatic access for CI/CD pipelines, scripts, and custom integrations
+- **Session History** — Save and revisit past diagrams (requires Supabase auth)
 - Parse Terraform state files (`.tfstate`) and HCL source files (`.tf`)
 - Auto-layout: VPC > Subnet > Resource hierarchy with nested containers
 - Interactive React Flow canvas with zoom, pan, minimap, and dark mode
 - Click any node to inspect attributes, tags, and connections
 - Provider badge showing cloud provider, filename, and resource count
 - Export diagrams as PNG
-- Search resources with keyboard shortcut (`Cmd+K`)
-- Keyboard shortcuts help overlay (`?`)
-- Resource type filter badges with counts and reset button
-- Built-in documentation with searchable Quick Start, Providers, API Reference, and Keyboard Shortcuts
+- Search resources with `Cmd+K`
+- Resource type filter badges with counts
+- Built-in documentation with searchable guides and dedicated API reference
 - Client-side routing with browser back/forward support
 - Sample infrastructure for quick demo (one click per provider)
 - Auto-detection of cloud provider from resource types
+- Google OAuth sign-in with Supabase (optional — works in guest mode without it)
 - Fully Dockerized with multi-stage builds
 
 ## Project Structure
@@ -31,25 +34,27 @@ Visualize your Terraform infrastructure as interactive architecture diagrams. Up
 ```
 infragraph/
 ├── apps/
-│   ├── backend/           # Express API — parses tfstate/HCL, builds graph
+│   ├── backend/           # Express API — parses tfstate/HCL, GitHub integration
 │   │   ├── src/
 │   │   │   ├── parser/    # tfstate, graph, and HCL parsers
 │   │   │   ├── providers/ # Cloud provider configs (aws, azure, gcp)
-│   │   │   └── routes/    # API route handlers
+│   │   │   ├── services/  # GitHub service (OAuth, repos, scan, fetch)
+│   │   │   ├── routes/    # API route handlers (parse, github, sessions, user)
+│   │   │   └── middleware/ # Auth middleware (optionalAuth, requireAuth)
 │   │   └── Dockerfile
 │   └── frontend/          # Vite + React 18 — React Flow canvas + UI
 │       ├── src/
-│       │   ├── components/  # Canvas, nodes, panels, provider select
+│       │   ├── components/  # Canvas, nodes, panels, modals, docs
 │       │   ├── providers/   # Frontend provider configs (aws, azure, gcp)
-│       │   └── lib/         # API client, icons
+│       │   └── lib/         # API client, auth, GitHub utilities
 │       └── Dockerfile
 ├── packages/
-│   └── shared/            # Shared TypeScript types (CloudResource, GraphNode, etc.)
+│   └── shared/            # Shared TypeScript types
 ├── e2e/                   # Playwright end-to-end tests
 ├── test/
 │   ├── fixtures/
 │   │   ├── projects/      # 11 .tf source test projects
-│   │   └── tfstate/       # 11 .tfstate test fixtures (simple → complex)
+│   │   └── tfstate/       # 11 .tfstate test fixtures
 │   └── screenshots/
 ├── docker-compose.yml
 └── Makefile
@@ -65,12 +70,45 @@ make up
 make install dev
 ```
 
-Open http://localhost:3000, select a cloud provider, and upload a `.tfstate` or `.tf` file.
+Open http://localhost:3000, select a cloud provider, and upload a `.tfstate` or `.tf` file — or click **Connect GitHub Repo** to browse your repositories.
 
 ## Prerequisites
 
 - **Docker** (recommended) — no other dependencies needed
 - **Without Docker**: Node.js 20+, npm 10+
+
+## Environment Variables
+
+### Backend (`apps/backend/.env`)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PORT` | No | Server port (default: 3001) |
+| `FRONTEND_URL` | No | Frontend URL for CORS (default: http://localhost:3000) |
+| `SUPABASE_URL` | No | Supabase project URL (enables auth & sessions) |
+| `SUPABASE_SERVICE_ROLE_KEY` | No | Supabase service role key |
+| `GITHUB_CLIENT_ID` | No | GitHub OAuth App client ID (enables GitHub connect) |
+| `GITHUB_CLIENT_SECRET` | No | GitHub OAuth App client secret |
+
+### Frontend (`apps/frontend/.env`)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_SUPABASE_URL` | No | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | No | Supabase anon key |
+| `VITE_GITHUB_CLIENT_ID` | No | GitHub OAuth App client ID |
+| `VITE_API_URL` | No | Backend API URL override |
+
+All features degrade gracefully — the app works in guest mode without any env vars.
+
+### GitHub OAuth Setup
+
+To enable the "Connect to GitHub" feature:
+
+1. Create a GitHub OAuth App at https://github.com/settings/developers
+2. Set the callback URL to `http://localhost:3000/auth/github-callback`
+3. Add `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` to backend `.env`
+4. Add `VITE_GITHUB_CLIENT_ID` to frontend `.env`
 
 ## Development
 
@@ -104,21 +142,32 @@ make check         # Run lint + typecheck + test (CI equivalent)
 
 ## API
 
-All endpoints accept an optional `?provider=aws|azure|gcp` query parameter to override auto-detection.
+Interactive Swagger docs available at http://localhost:3001/docs when the backend is running.
 
-### `POST /api/parse`
+### Parse Endpoints
 
-Upload a `.tfstate` file as multipart form data (field: `tfstate`).
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/parse` | Upload a `.tfstate` file (multipart form, field: `tfstate`) |
+| `POST` | `/api/parse/raw` | Send raw tfstate JSON: `{ "tfstate": "..." }` |
+| `POST` | `/api/parse/hcl` | Upload `.tf` files (multipart form, field: `files`) |
 
-### `POST /api/parse/raw`
+### GitHub Endpoints
 
-Send raw tfstate JSON in the body: `{ "tfstate": "..." }`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/github/token` | Exchange OAuth code for access token |
+| `GET` | `/api/github/repos` | List authenticated user's repos (requires `X-GitHub-Token` header) |
+| `POST` | `/api/github/scan` | Scan a repo for Terraform projects |
+| `POST` | `/api/github/parse` | Parse a Terraform project from a GitHub repo |
 
-### `POST /api/parse/hcl`
+### System
 
-Upload one or more `.tf` files as multipart form data (field: `files`).
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Health check |
 
-All endpoints return:
+All parse endpoints return:
 
 ```ts
 {
@@ -130,11 +179,7 @@ All endpoints return:
 }
 ```
 
-### `GET /health`
-
-Health check endpoint.
-
-Swagger docs available at http://localhost:3001/docs.
+GitHub endpoints accept an optional `X-GitHub-Token` header for private repo access and higher rate limits (5,000 req/hr vs 60 req/hr).
 
 ## Supported Cloud Providers
 
