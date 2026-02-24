@@ -1,5 +1,6 @@
-import type { CloudProvider, ParseResponse, ApiError, SessionSummary, Session, CreateSessionRequest, GitHubScanResponse } from '@infragraph/shared';
+import type { CloudProvider, ParseResponse, ApiError, SessionSummary, Session, CreateSessionRequest, GitHubScanResponse, GitHubRepo, GitHubTokenResponse } from '@infragraph/shared';
 import { supabase } from './supabase';
+import { getGitHubToken } from './github';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
@@ -109,8 +110,38 @@ export async function deleteSession(id: string): Promise<void> {
 
 // ─── GitHub Connect API ─────────────────────────────────────────────────────
 
+/** Returns X-GitHub-Token header if a GitHub token is stored. */
+function githubTokenHeader(): Record<string, string> {
+  const token = getGitHubToken();
+  return token ? { 'X-GitHub-Token': token } : {};
+}
+
+export async function exchangeGitHubCode(code: string): Promise<GitHubTokenResponse> {
+  const headers = { 'Content-Type': 'application/json' };
+  const res = await fetch(`${API_BASE}/api/github/token`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ code }),
+  });
+  if (!res.ok) {
+    const err: ApiError = await res.json();
+    throw new Error(err.details ?? err.error);
+  }
+  return res.json();
+}
+
+export async function listGitHubRepos(): Promise<GitHubRepo[]> {
+  const headers = { ...githubTokenHeader() };
+  const res = await fetch(`${API_BASE}/api/github/repos`, { headers });
+  if (!res.ok) {
+    const err: ApiError = await res.json();
+    throw new Error(err.details ?? err.error);
+  }
+  return res.json();
+}
+
 export async function scanGitHubRepo(repoUrl: string): Promise<GitHubScanResponse> {
-  const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) };
+  const headers = { 'Content-Type': 'application/json', ...(await authHeaders()), ...githubTokenHeader() };
   const res = await fetch(`${API_BASE}/api/github/scan`, {
     method: 'POST',
     headers,
@@ -124,7 +155,7 @@ export async function scanGitHubRepo(repoUrl: string): Promise<GitHubScanRespons
 }
 
 export async function parseGitHubProject(repoUrl: string, projectPath: string): Promise<ParseResponse> {
-  const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) };
+  const headers = { 'Content-Type': 'application/json', ...(await authHeaders()), ...githubTokenHeader() };
   const res = await fetch(`${API_BASE}/api/github/parse`, {
     method: 'POST',
     headers,
