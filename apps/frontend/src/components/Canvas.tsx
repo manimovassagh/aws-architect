@@ -164,64 +164,79 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(
     return { nodeIds, edgeIds };
   }, [hoveredNodeId, visibleEdges, visibleNodes]);
 
+  // Stable node objects — only change on search/filter/plan, NOT on hover
   const nodes = useMemo(() => {
     return visibleNodes.map((n) => {
       const searchDimmed = matchingNodeIds !== null && !matchingNodeIds.has(n.id);
-      const hoverDimmed = hoverConnected !== null && !hoverConnected.nodeIds.has(n.id);
-      const isDimmed = searchDimmed || hoverDimmed;
       const planAction = n.data.planAction;
       const planColor = planAction ? PLAN_ACTION_COLORS[planAction] : undefined;
       return {
         ...n,
         style: {
           ...n.style,
-          opacity: isDimmed ? 0.2 : 1,
+          opacity: searchDimmed ? 0.2 : 1,
           transition: 'opacity 0.2s ease, outline-color 0.2s ease',
           ...(planColor ? { outline: `3px solid ${planColor}`, outlineOffset: '2px', borderRadius: 8 } : {}),
         },
       } as Node<GraphNodeData>;
     });
-  }, [visibleNodes, matchingNodeIds, hoverConnected]);
+  }, [visibleNodes, matchingNodeIds]);
 
-  // Style edges with color-coding, selection highlighting, and hover highlighting
+  // Hover dimming via CSS — avoids recreating node objects on every mouse move
+  const hoverDimStyle = useMemo(() => {
+    if (!hoverConnected) return null;
+    const dimmedNodeSelectors = visibleNodes
+      .filter((n) => !hoverConnected.nodeIds.has(n.id))
+      .map((n) => `.react-flow__node[data-id="${CSS.escape(n.id)}"]`);
+    const dimmedEdgeSelectors = visibleEdges
+      .filter((e) => !hoverConnected.edgeIds.has(e.id))
+      .map((e) => `.react-flow__edge[data-testid="rf__edge-${CSS.escape(e.id)}"]`);
+    const rules: string[] = [];
+    if (dimmedNodeSelectors.length > 0) {
+      rules.push(`${dimmedNodeSelectors.join(',')}{opacity:0.55!important;transition:opacity 0.2s ease}`);
+    }
+    if (dimmedEdgeSelectors.length > 0) {
+      rules.push(`${dimmedEdgeSelectors.join(',')}{opacity:0.35!important;transition:opacity 0.2s ease}`);
+    }
+    return rules.length > 0 ? rules.join('\n') : null;
+  }, [hoverConnected, visibleNodes, visibleEdges]);
+
+  // Style edges — only recompute on selection, not hover (hover handled by CSS)
   const edges = useMemo(
     () =>
       visibleEdges.map((e) => {
         const isSelected = selectedNodeId
           ? e.source === selectedNodeId || e.target === selectedNodeId
           : false;
-        const isHovered = hoverConnected?.edgeIds.has(e.id) ?? false;
-        const isHighlighted = isSelected || isHovered;
-        const isDimmed = (selectedNodeId !== null && !isSelected) ||
-          (hoverConnected !== null && !isHovered);
+        const isDimmed = selectedNodeId !== null && !isSelected;
         const edgeColor = providerConfig.edgeColors[e.label ?? ''] ?? '#94a3b8';
         const color = isDimmed ? '#e2e8f0' : edgeColor;
 
         return {
           ...e,
           type: 'smoothstep',
-          animated: isHighlighted,
+          animated: isSelected,
           style: {
             stroke: color,
-            strokeDasharray: isHighlighted ? undefined : '6 3',
-            strokeWidth: isHighlighted ? 2.5 : 1.5,
+            strokeDasharray: isSelected ? undefined : '6 3',
+            strokeWidth: isSelected ? 2.5 : 1.5,
             transition: 'stroke 0.2s ease, stroke-width 0.2s ease, opacity 0.2s ease',
             opacity: isDimmed ? 0.15 : 1,
           },
           labelStyle: {
             fontSize: 10,
             fill: isDimmed ? '#cbd5e1' : '#475569',
-            fontWeight: isHighlighted ? 600 : 400,
+            fontWeight: isSelected ? 600 : 400,
           },
           labelBgStyle: {
-            fill: isHighlighted ? '#ffffff' : '#f8fafc',
-            fillOpacity: isHighlighted ? 1 : 0.9,
+            fill: isSelected ? '#ffffff' : '#f8fafc',
+            fillOpacity: isSelected ? 1 : 0.9,
           },
           labelBgPadding: [4, 2] as [number, number],
           labelBgBorderRadius: 3,
         };
       }),
-    [visibleEdges, selectedNodeId, hoverConnected, providerConfig.edgeColors]
+    [visibleEdges, selectedNodeId, providerConfig.edgeColors]
   ) as Edge[];
 
   // Determine if plan actions exist for showing the legend
@@ -238,6 +253,7 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(
 
   return (
     <div ref={wrapperRef} className="w-full h-full">
+      {hoverDimStyle && <style>{hoverDimStyle}</style>}
       <ReactFlow
         nodes={nodes}
         edges={edges}
