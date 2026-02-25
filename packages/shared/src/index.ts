@@ -2,6 +2,11 @@
 
 export type CloudProvider = 'aws' | 'azure' | 'gcp';
 
+// ─── IaC Source ──────────────────────────────────────────────────────────────
+
+/** Which Infrastructure-as-Code tool produced the parse input */
+export type IacSource = 'terraform-state' | 'terraform-hcl' | 'cloudformation' | 'cdk';
+
 // ─── AWS Resource Types ───────────────────────────────────────────────────────
 
 export type AwsResourceType =
@@ -37,13 +42,13 @@ export type AwsResourceType =
 export interface CloudResource {
   /** Unique ID within the graph — e.g. "aws_vpc.main" or "azurerm_virtual_network.main" */
   id: string;
-  /** Terraform resource type */
+  /** Resource type identifier (Terraform type like "aws_vpc" or normalized CFN type) */
   type: string;
-  /** Terraform resource name (the label after the type) */
+  /** Resource name (Terraform label or CloudFormation logical ID) */
   name: string;
   /** Human-readable display name */
   displayName: string;
-  /** All attributes from tfstate values block */
+  /** All attributes (from tfstate values, HCL properties, or CFN properties) */
   attributes: Record<string, unknown>;
   /** IDs of other resources this resource depends on */
   dependencies: string[];
@@ -123,6 +128,8 @@ export interface ParseResponse {
   provider: CloudProvider;
   /** Parsing warnings (non-fatal issues) */
   warnings: string[];
+  /** Which IaC tool produced this result */
+  iacSource?: IacSource;
 }
 
 export interface ApiError {
