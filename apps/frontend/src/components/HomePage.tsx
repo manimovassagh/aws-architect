@@ -9,7 +9,7 @@ import { Canvas, type CanvasHandle } from '@/components/Canvas';
 import { NodeDetailPanel } from '@/components/NodeDetailPanel';
 import { ResourceSummary } from '@/components/ResourceSummary';
 import { SearchBar, type SearchBarHandle } from '@/components/SearchBar';
-import { parseFile, parseHcl, saveSession } from '@/lib/api';
+import { parseFile, parseHcl, parseCfn, saveSession } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import { UserMenu } from '@/components/UserMenu';
 
@@ -19,11 +19,18 @@ const PROVIDER_META: Record<string, { label: string; color: string }> = {
   gcp: { label: 'GCP', color: '#4285F4' },
 };
 
+const IAC_SOURCE_LABELS: Record<string, string> = {
+  'terraform-state': 'Terraform State',
+  'terraform-hcl': 'Terraform HCL',
+  'cloudformation': 'CloudFormation',
+  'cdk': 'AWS CDK',
+};
+
 type AppState =
   | { view: 'landing' }
   | { view: 'loading'; fileName: string }
   | { view: 'error'; message: string; fileName?: string }
-  | { view: 'canvas'; provider: CloudProvider; data: ParseResponse; selectedNodeId: string | null; fileName: string };
+  | { view: 'canvas'; provider: CloudProvider; data: ParseResponse; selectedNodeId: string | null; fileName: string; iacLabel?: string };
 
 export function HomePage() {
   const { user } = useAuth();
@@ -109,29 +116,34 @@ export function HomePage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showShortcuts]);
 
-  async function handleSmartUpload(files: File[], mode: 'tfstate' | 'hcl') {
+  async function handleSmartUpload(files: File[], mode: 'tfstate' | 'hcl' | 'cfn') {
     const fileName = files.length === 1
       ? files[0]!.name
-      : `${files.length} .tf files`;
+      : `${files.length} ${mode === 'hcl' ? '.tf' : ''} files`;
     setState({ view: 'loading', fileName });
     try {
       let data: ParseResponse;
       if (mode === 'tfstate') {
         data = await parseFile(files[0]!);
-      } else {
+      } else if (mode === 'hcl') {
         data = await parseHcl(files);
+      } else {
+        data = await parseCfn(files[0]!);
       }
       if (data.resources.length === 0) {
         setState({
           view: 'error',
-          message: 'No resources found. Make sure the file contains managed Terraform resources.',
+          message: mode === 'cfn'
+            ? 'No supported resources found in the CloudFormation template.'
+            : 'No resources found. Make sure the file contains managed Terraform resources.',
           fileName,
         });
         return;
       }
       const config = await getProviderFrontendConfig(data.provider);
       setProviderConfig(config);
-      setState({ view: 'canvas', provider: data.provider, data, selectedNodeId: null, fileName });
+      const iacLabel = data.iacSource ? IAC_SOURCE_LABELS[data.iacSource] : undefined;
+      setState({ view: 'canvas', provider: data.provider, data, selectedNodeId: null, fileName, iacLabel });
       navigate('/canvas');
 
       // Fire-and-forget save if logged in
@@ -235,15 +247,36 @@ export function HomePage() {
 
     // Auto-detect mode from extensions
     const hasTf = fileList.some((f) => f.name.endsWith('.tf'));
-    const hasTfstate = fileList.some((f) =>
-      f.name.endsWith('.tfstate') || f.name.endsWith('.json')
-    );
+    const hasTfstate = fileList.some((f) => f.name.endsWith('.tfstate'));
+    const hasCfn = fileList.some((f) => {
+      const name = f.name.toLowerCase();
+      return name.endsWith('.yaml') || name.endsWith('.yml') || name.endsWith('.template');
+    });
+    const hasJson = fileList.some((f) => f.name.endsWith('.json'));
 
-    if (hasTf && hasTfstate) return; // mixed — ignore
+    const typeCount = [hasTf, hasTfstate, hasCfn].filter(Boolean).length;
+    if (typeCount > 1) return; // mixed — ignore
+
     if (hasTf) {
       handleSmartUpload(fileList, 'hcl');
-    } else if (hasTfstate && fileList[0]) {
-      handleSmartUpload([fileList[0]], 'tfstate');
+    } else if (hasCfn) {
+      handleSmartUpload([fileList[0]!], 'cfn');
+    } else if (hasTfstate) {
+      handleSmartUpload([fileList[0]!], 'tfstate');
+    } else if (hasJson && fileList[0]) {
+      // Ambiguous .json — read content to decide
+      void fileList[0].text().then((text) => {
+        try {
+          const obj = JSON.parse(text);
+          if (obj?.AWSTemplateFormatVersion || (obj?.Resources && typeof obj.Resources === 'object')) {
+            handleSmartUpload([fileList[0]!], 'cfn');
+          } else {
+            handleSmartUpload([fileList[0]!], 'tfstate');
+          }
+        } catch {
+          handleSmartUpload([fileList[0]!], 'tfstate');
+        }
+      });
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
@@ -299,7 +332,7 @@ export function HomePage() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".tfstate,.json,.tf"
+          accept=".tfstate,.json,.tf,.yaml,.yml,.template"
           multiple
           onChange={onQuickFileChange}
           className="hidden"
@@ -402,7 +435,7 @@ export function HomePage() {
                       {state.fileName}
                     </span>
                     <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                      {state.data.resources.length} resources
+                      {state.data.resources.length} resources{state.iacLabel ? ` \u00B7 ${state.iacLabel}` : ''}
                     </span>
                   </div>
                 </div>

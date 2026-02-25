@@ -46,6 +46,22 @@ export async function parseHcl(files: File[], provider?: CloudProvider): Promise
   return res.json();
 }
 
+export async function parseCfn(file: File, source?: 'cloudformation' | 'cdk'): Promise<ParseResponse> {
+  const form = new FormData();
+  form.append('template', file);
+
+  const params = source === 'cdk' ? '?source=cdk' : '';
+  const headers = await authHeaders();
+  const res = await fetch(`${API_BASE}/api/parse/cfn${params}`, { method: 'POST', body: form, headers });
+
+  if (!res.ok) {
+    const err: ApiError = await res.json();
+    throw new Error(err.details ?? err.error);
+  }
+
+  return res.json();
+}
+
 export async function parseRaw(tfstate: string, provider?: CloudProvider): Promise<ParseResponse> {
   const params = provider ? `?provider=${provider}` : '';
   const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) };

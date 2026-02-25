@@ -3,38 +3,81 @@ import { useCallback, useRef, useState } from 'react';
 type UploadState = 'idle' | 'dragging' | 'ready' | 'invalid';
 
 interface UploadProps {
-  onSubmit: (files: File[], mode: 'tfstate' | 'hcl') => void;
+  onSubmit: (files: File[], mode: 'tfstate' | 'hcl' | 'cfn') => void;
 }
 
-const TFSTATE_EXTENSIONS = ['.tfstate', '.json'];
+const TFSTATE_EXTENSIONS = ['.tfstate'];
 const HCL_EXTENSIONS = ['.tf'];
-const ALL_EXTENSIONS = [...TFSTATE_EXTENSIONS, ...HCL_EXTENSIONS];
+const CFN_EXTENSIONS = ['.yaml', '.yml', '.template'];
+const AMBIGUOUS_EXTENSIONS = ['.json']; // Could be tfstate or CFN
+const ALL_EXTENSIONS = [...TFSTATE_EXTENSIONS, ...HCL_EXTENSIONS, ...CFN_EXTENSIONS, ...AMBIGUOUS_EXTENSIONS];
 const MAX_SIZE = 50 * 1024 * 1024; // 50 MB
 
-type DetectedMode = 'tfstate' | 'hcl' | 'mixed' | 'unknown';
+type DetectedMode = 'tfstate' | 'hcl' | 'cfn' | 'mixed' | 'unknown';
 
-function detectMode(files: File[]): { mode: DetectedMode; error?: string } {
+function detectMode(files: File[]): { mode: DetectedMode; error?: string; needsContentCheck?: File } {
   let hasTfstate = false;
   let hasHcl = false;
+  let hasCfn = false;
   let hasUnknown = false;
+  let ambiguousFile: File | undefined;
 
   for (const f of files) {
-    const ext = f.name.slice(f.name.lastIndexOf('.'));
-    if (TFSTATE_EXTENSIONS.includes(ext)) hasTfstate = true;
+    const name = f.name.toLowerCase();
+    const ext = name.slice(name.lastIndexOf('.'));
+    if (TFSTATE_EXTENSIONS.includes(ext) || name.endsWith('.tfstate')) hasTfstate = true;
     else if (HCL_EXTENSIONS.includes(ext)) hasHcl = true;
+    else if (CFN_EXTENSIONS.includes(ext)) hasCfn = true;
+    else if (AMBIGUOUS_EXTENSIONS.includes(ext)) ambiguousFile = f;
     else hasUnknown = true;
   }
 
-  if (hasUnknown && !hasTfstate && !hasHcl) {
-    return { mode: 'unknown', error: 'Unsupported file type. Only .tfstate, .json, and .tf files are accepted.' };
+  if (hasUnknown && !hasTfstate && !hasHcl && !hasCfn && !ambiguousFile) {
+    return { mode: 'unknown', error: 'Unsupported file type. Accepted: .tfstate, .json, .tf, .yaml, .yml, .template' };
   }
-  // If there are unknown files mixed with known ones, filter them out silently
-  if (hasTfstate && hasHcl) {
-    return { mode: 'mixed', error: 'Cannot mix .tfstate and .tf files. Upload one type at a time.' };
+
+  const typeCount = [hasTfstate, hasHcl, hasCfn].filter(Boolean).length;
+  if (typeCount > 1) {
+    return { mode: 'mixed', error: 'Cannot mix file types. Upload one type at a time.' };
   }
+
   if (hasTfstate) return { mode: 'tfstate' };
   if (hasHcl) return { mode: 'hcl' };
+  if (hasCfn) return { mode: 'cfn' };
+
+  // Only ambiguous .json files remain — need content-based detection
+  if (ambiguousFile) {
+    return { mode: 'unknown', needsContentCheck: ambiguousFile };
+  }
+
   return { mode: 'unknown', error: 'No supported files found.' };
+}
+
+/** Detect whether a .json file is a tfstate or CloudFormation template by reading its content. */
+async function detectJsonType(file: File): Promise<'tfstate' | 'cfn'> {
+  const text = await file.text();
+  try {
+    const obj = JSON.parse(text);
+    if (obj && typeof obj === 'object') {
+      // CloudFormation: has Resources with Type: "AWS::..."
+      if (obj.AWSTemplateFormatVersion || obj.Resources) {
+        const resources = obj.Resources;
+        if (resources && typeof resources === 'object') {
+          const firstValue = Object.values(resources)[0] as Record<string, unknown> | undefined;
+          if (firstValue?.Type && typeof firstValue.Type === 'string' && firstValue.Type.startsWith('AWS::')) {
+            return 'cfn';
+          }
+        }
+      }
+      // Terraform state: has version + resources array
+      if (obj.version !== undefined && Array.isArray(obj.resources)) {
+        return 'tfstate';
+      }
+    }
+  } catch {
+    // Not valid JSON — fall through to default
+  }
+  return 'tfstate'; // default fallback
 }
 
 function validateFiles(files: File[]): string | null {
@@ -63,16 +106,16 @@ function filterSupported(files: File[]): File[] {
 export function Upload({ onSubmit }: UploadProps) {
   const [state, setState] = useState<UploadState>('idle');
   const [files, setFiles] = useState<File[]>([]);
-  const [detectedMode, setDetectedMode] = useState<'tfstate' | 'hcl'>('tfstate');
+  const [detectedMode, setDetectedMode] = useState<'tfstate' | 'hcl' | 'cfn'>('tfstate');
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFiles = useCallback((fileList: File[]) => {
+  const handleFiles = useCallback(async (fileList: File[]) => {
     // Filter to supported files (handles folder drops with mixed content)
     const supported = filterSupported(fileList);
     if (supported.length === 0) {
       setState('invalid');
-      setError('No supported files found. Drop .tfstate, .json, or .tf files.');
+      setError('No supported files found. Drop .tfstate, .json, .tf, .yaml, or .yml files.');
       setFiles([]);
       return;
     }
@@ -85,7 +128,7 @@ export function Upload({ onSubmit }: UploadProps) {
       return;
     }
 
-    const { mode, error: modeErr } = detectMode(supported);
+    const { mode, error: modeErr, needsContentCheck } = detectMode(supported);
     if (modeErr) {
       setState('invalid');
       setError(modeErr);
@@ -93,9 +136,19 @@ export function Upload({ onSubmit }: UploadProps) {
       return;
     }
 
+    // For ambiguous .json files, detect by content
+    if (needsContentCheck) {
+      const detected = await detectJsonType(needsContentCheck);
+      setState('ready');
+      setError(null);
+      setDetectedMode(detected);
+      setFiles(supported);
+      return;
+    }
+
     setState('ready');
     setError(null);
-    setDetectedMode(mode as 'tfstate' | 'hcl');
+    setDetectedMode(mode as 'tfstate' | 'hcl' | 'cfn');
     setFiles(supported);
   }, []);
 
@@ -113,7 +166,7 @@ export function Upload({ onSubmit }: UploadProps) {
     (e: React.DragEvent) => {
       e.preventDefault();
       const dropped = Array.from(e.dataTransfer.files);
-      if (dropped.length > 0) handleFiles(dropped);
+      if (dropped.length > 0) void handleFiles(dropped);
     },
     [handleFiles],
   );
@@ -121,7 +174,7 @@ export function Upload({ onSubmit }: UploadProps) {
   const onFileInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const selected = Array.from(e.target.files ?? []);
-      if (selected.length > 0) handleFiles(selected);
+      if (selected.length > 0) void handleFiles(selected);
     },
     [handleFiles],
   );
@@ -176,7 +229,7 @@ export function Upload({ onSubmit }: UploadProps) {
           <p className="text-slate-700 dark:text-slate-300 text-lg font-medium">
             {state === 'dragging'
               ? 'Drop your file(s) here'
-              : 'Drop .tfstate or .tf files here'}
+              : 'Drop .tfstate, .tf, or CloudFormation templates here'}
           </p>
           <p className="text-slate-400 dark:text-slate-500 text-base">
             Click to browse — or drag files and folders
@@ -199,7 +252,7 @@ export function Upload({ onSubmit }: UploadProps) {
               </>
             )}
             <p className="text-xs mt-1.5 text-slate-400 dark:text-slate-500">
-              Detected: <span className="font-mono">{detectedMode === 'tfstate' ? '.tfstate' : '.tf'}</span>
+              Detected: <span className="font-mono">{detectedMode === 'tfstate' ? '.tfstate' : detectedMode === 'hcl' ? '.tf' : 'CloudFormation'}</span>
             </p>
           </div>
           <div className="flex gap-3" onClick={(e) => e.stopPropagation()}>
