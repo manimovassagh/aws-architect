@@ -52,17 +52,17 @@ interface SearchEntry {
 
 const searchIndex: SearchEntry[] = [
   // Overview
-  { section: 'overview', title: 'What is InfraGraph?', text: 'InfraGraph is an open-source infrastructure visualization platform that transforms Terraform code into interactive architecture diagrams. Multi-cloud support for AWS Azure GCP. Connect GitHub repos, upload files, or call the API.' },
+  { section: 'overview', title: 'What is InfraGraph?', text: 'InfraGraph is an open-source infrastructure visualization platform that transforms Terraform, CloudFormation, and CDK code into interactive architecture diagrams. Multi-cloud support for AWS Azure GCP. Connect GitHub repos, upload files, or call the API.' },
   { section: 'overview', title: 'Use Cases', text: 'Architecture reviews, onboarding, compliance audits, CI/CD pipeline integration, documentation generation, infrastructure drift detection, team collaboration.' },
-  { section: 'overview', title: 'Features', text: 'Multi-cloud auto-detection, nested container layout VPC Subnet, GitHub repo scanning, private repo access, session history, export PNG SVG, search filter resources, dark mode.' },
+  { section: 'overview', title: 'Features', text: 'Multi-IaC support Terraform CloudFormation CDK, multi-cloud auto-detection, nested container layout VPC Subnet, GitHub repo scanning, private repo access, session history, export PNG SVG, search filter resources, dark mode.' },
   // Quick Start
-  { section: 'quickstart', title: 'Upload your Terraform file', text: 'Drop a .tfstate or .tf file onto the upload zone, or click to browse. InfraGraph auto-detects the cloud provider. Supported formats: Terraform state files, HCL configuration files, JSON-format state files.' },
-  { section: 'quickstart', title: 'Parse and visualize', text: 'Click Parse to send the file to the backend. InfraGraph extracts resources, resolves relationships, and builds a nested graph with VPCs, subnets laid out automatically.' },
+  { section: 'quickstart', title: 'Upload your IaC file', text: 'Drop a .tfstate, .tf, .yaml, .json, or .template file onto the upload zone, or click to browse. InfraGraph auto-detects the cloud provider and IaC tool. Supported formats: Terraform state files, HCL configuration files, CloudFormation templates, CDK-synthesized templates.' },
+  { section: 'quickstart', title: 'Parse and visualize', text: 'Click Parse to send the file to the backend. InfraGraph extracts resources, resolves relationships and dependencies, and builds a nested graph with VPCs, subnets laid out automatically.' },
   { section: 'quickstart', title: 'Explore your infrastructure', text: 'Click a node to inspect attributes tags connections. Search resources with Cmd+K. Filter by resource type. Export diagram as PNG.' },
   // GitHub Integration
-  { section: 'github', title: 'Connect to GitHub', text: 'One-click OAuth connection to browse your repositories. Access private repos, scan for Terraform projects, parse directly from GitHub without downloading files.' },
-  { section: 'github', title: 'Repo Browser', text: 'Search and browse your GitHub repositories. Private repos shown with lock icon. Click to scan for Terraform projects. Select a project to visualize.' },
-  { section: 'github', title: 'Public Repo URL', text: 'Paste any public GitHub repo URL to scan for Terraform projects without authentication. Works with any public repository containing .tf files.' },
+  { section: 'github', title: 'Connect to GitHub', text: 'One-click OAuth connection to browse your repositories. Access private repos, scan for IaC projects, parse directly from GitHub without downloading files.' },
+  { section: 'github', title: 'Repo Browser', text: 'Search and browse your GitHub repositories. Private repos shown with lock icon. Click to scan for IaC projects. Select a project to visualize.' },
+  { section: 'github', title: 'Public Repo URL', text: 'Paste any public GitHub repo URL to scan for IaC projects without authentication. Works with any public repository containing .tf files.' },
   // Providers
   { section: 'providers', title: 'AWS Provider', text: 'AWS VPC Subnet EC2 Instance RDS S3 Bucket Lambda Function Load Balancer Security Group Internet Gateway NAT Gateway ECS EKS CloudFront DynamoDB SNS SQS Route53 IAM' },
   { section: 'providers', title: 'Azure Provider', text: 'Azure Virtual Network Subnet Virtual Machine SQL Database Storage Account Function App Load Balancer Public IP Network Security Group AKS App Service' },
@@ -71,10 +71,12 @@ const searchIndex: SearchEntry[] = [
   // API Reference
   { section: 'api', title: 'POST /api/parse', text: 'Parse a .tfstate file upload via multipart form and return architecture graph data with nodes edges resources.' },
   { section: 'api', title: 'POST /api/parse/raw', text: 'Parse raw tfstate JSON string from request body. Ideal for programmatic access and CI/CD pipelines.' },
+  { section: 'api', title: 'POST /api/parse/cfn', text: 'Parse a CloudFormation or CDK template upload via multipart form. Supports JSON and YAML. Add ?source=cdk to tag CDK-synthesized templates.' },
+  { section: 'api', title: 'POST /api/parse/cfn/raw', text: 'Parse raw CloudFormation or CDK template JSON/YAML from request body. Ideal for programmatic access.' },
   { section: 'api', title: 'POST /api/github/token', text: 'Exchange GitHub OAuth authorization code for access token. Returns token username and avatar.' },
   { section: 'api', title: 'GET /api/github/repos', text: 'List authenticated user repositories including private repos. Requires X-GitHub-Token header.' },
-  { section: 'api', title: 'POST /api/github/scan', text: 'Scan a GitHub repository for directories containing Terraform .tf files. Returns list of projects with file counts.' },
-  { section: 'api', title: 'POST /api/github/parse', text: 'Parse a Terraform project directly from GitHub repo. Fetches .tf files and returns graph data. Supports private repos with token.' },
+  { section: 'api', title: 'POST /api/github/scan', text: 'Scan a GitHub repository for directories containing IaC files (.tf). Returns list of projects with file counts.' },
+  { section: 'api', title: 'POST /api/github/parse', text: 'Parse an IaC project directly from GitHub repo. Fetches .tf files and returns graph data. Supports private repos with token.' },
   { section: 'api', title: 'GET /health', text: 'Health check endpoint. Returns status ok and version.' },
   { section: 'api', title: 'Authentication', text: 'GitHub token passed via X-GitHub-Token header. Optional for public repos, required for private repos. Increases rate limit from 60 to 5000 requests per hour.' },
   // Keyboard
@@ -365,7 +367,7 @@ function OverviewSection({ onNavigate }: { onNavigate: (s: Section) => void }) {
         <h1 className="text-3xl font-bold tracking-tight">InfraGraph Documentation</h1>
         <p className="mt-3 text-lg text-slate-500 dark:text-slate-400 leading-relaxed">
           InfraGraph is an open-source infrastructure visualization platform that transforms
-          your Terraform code into interactive, multi-cloud architecture diagrams — in seconds.
+          your Terraform, CloudFormation, and CDK code into interactive, multi-cloud architecture diagrams — in seconds.
         </p>
       </div>
 
@@ -398,7 +400,7 @@ function OverviewSection({ onNavigate }: { onNavigate: (s: Section) => void }) {
               </svg>
             ),
             title: 'GitHub Native',
-            desc: 'Connect your GitHub account to browse repos and parse Terraform projects directly.',
+            desc: 'Connect your GitHub account to browse repos and parse IaC projects directly.',
           },
           {
             icon: (
@@ -425,7 +427,7 @@ function OverviewSection({ onNavigate }: { onNavigate: (s: Section) => void }) {
         <h2 className="text-xl font-semibold">How It Works</h2>
         <div className="grid sm:grid-cols-3 gap-4">
           {[
-            { step: '1', title: 'Provide Terraform', desc: 'Upload a file, connect a GitHub repo, or send JSON via the API.' },
+            { step: '1', title: 'Provide Your IaC', desc: 'Upload a Terraform, CloudFormation, or CDK file — or connect a GitHub repo.' },
             { step: '2', title: 'Parse & Analyze', desc: 'InfraGraph extracts resources, resolves dependencies, and detects the cloud provider.' },
             { step: '3', title: 'Visualize', desc: 'Interactive diagram with nested containers, searchable resources, and export to PNG.' },
           ].map((item) => (
@@ -448,7 +450,7 @@ function OverviewSection({ onNavigate }: { onNavigate: (s: Section) => void }) {
             { title: 'Architecture Reviews', desc: 'Visualize infrastructure before and after changes. Share diagrams in pull request discussions.' },
             { title: 'Team Onboarding', desc: 'Give new engineers an instant visual overview of your cloud infrastructure across all environments.' },
             { title: 'Compliance & Audits', desc: 'Generate up-to-date architecture diagrams for security reviews and compliance documentation.' },
-            { title: 'CI/CD Integration', desc: 'Call the API from pipelines to auto-generate diagrams on every Terraform change.' },
+            { title: 'CI/CD Integration', desc: 'Call the API from pipelines to auto-generate diagrams on every infrastructure change.' },
             { title: 'Documentation', desc: 'Export diagrams as PNG for wikis, runbooks, and internal documentation. Always current, never stale.' },
             { title: 'Multi-Cloud Visibility', desc: 'Visualize AWS, Azure, and GCP infrastructure side by side with consistent, provider-branded diagrams.' },
           ].map((item) => (
@@ -496,7 +498,7 @@ function QuickStartSection() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Quick Start</h1>
         <p className="mt-3 text-lg text-slate-500 dark:text-slate-400">
-          Get your Terraform infrastructure visualized in under 30 seconds.
+          Get your infrastructure visualized in under 30 seconds.
         </p>
       </div>
 
@@ -514,13 +516,11 @@ function QuickStartSection() {
       <div className="space-y-3">
         <div className="flex items-center gap-3">
           <span className="flex items-center justify-center w-7 h-7 rounded-full bg-violet-600 text-white text-sm font-bold">1</span>
-          <h2 className="text-xl font-semibold">Upload your Terraform file</h2>
+          <h2 className="text-xl font-semibold">Upload your IaC file</h2>
         </div>
         <p className="text-slate-500 dark:text-slate-400 ml-10">
-          Drop a <code className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-sm font-mono">.tfstate</code> or{' '}
-          <code className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-sm font-mono">.tf</code> file
-          onto the upload zone, or click to browse. InfraGraph auto-detects the cloud provider
-          from your resource types.
+          Drop your infrastructure file onto the upload zone, or click to browse.
+          InfraGraph auto-detects the IaC tool and cloud provider from your file content.
         </p>
         <div className="ml-10 p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
           <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -537,7 +537,11 @@ function QuickStartSection() {
             </li>
             <li className="flex items-center gap-2">
               <span className="text-green-500">&#10003;</span>
-              JSON-format state files (<code className="text-xs font-mono">.json</code>)
+              CloudFormation templates (<code className="text-xs font-mono">.yaml</code>, <code className="text-xs font-mono">.yml</code>, <code className="text-xs font-mono">.json</code>, <code className="text-xs font-mono">.template</code>)
+            </li>
+            <li className="flex items-center gap-2">
+              <span className="text-green-500">&#10003;</span>
+              CDK-synthesized templates (<code className="text-xs font-mono">cdk synth</code> output — auto-detected)
             </li>
           </ul>
         </div>
@@ -595,7 +599,7 @@ function QuickStartSection() {
         </div>
         <p className="text-slate-500 dark:text-slate-400 ml-10">
           Click <strong>Connect GitHub Repo</strong> on the home page to browse your repositories
-          and select a Terraform project directly — no file downloads needed. Works with both
+          and select an IaC project directly — no file downloads needed. Works with both
           public and private repos.
         </p>
       </div>
@@ -604,9 +608,9 @@ function QuickStartSection() {
       <div className="p-5 rounded-xl border border-violet-200 dark:border-violet-500/20 bg-violet-50 dark:bg-violet-500/5">
         <p className="font-semibold text-violet-700 dark:text-violet-300">Try it now</p>
         <p className="mt-1 text-sm text-violet-600 dark:text-violet-400">
-          Don&#39;t have a Terraform file handy? Use the sample buttons on the{' '}
+          Don&#39;t have an IaC file handy? Use the sample buttons on the{' '}
           <Link to="/" className="underline hover:no-underline">home page</Link> to load
-          a pre-built AWS, Azure, or GCP infrastructure.
+          a pre-built AWS, Azure, GCP, or CloudFormation infrastructure.
         </p>
       </div>
     </div>
@@ -621,7 +625,7 @@ function GitHubSection() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">GitHub Integration</h1>
         <p className="mt-3 text-lg text-slate-500 dark:text-slate-400">
-          Connect your GitHub account to browse repositories, scan for Terraform projects,
+          Connect your GitHub account to browse repositories, scan for IaC projects,
           and visualize infrastructure — all without downloading files.
         </p>
       </div>
@@ -648,7 +652,7 @@ function GitHubSection() {
           </li>
           <li className="flex items-start gap-2">
             <span className="flex items-center justify-center w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 text-xs font-bold shrink-0 mt-0.5">4</span>
-            <span>Browse your repos, select one, pick a Terraform project, and visualize</span>
+            <span>Browse your repos, select one, pick an IaC project, and visualize</span>
           </li>
         </ol>
       </div>
@@ -661,7 +665,7 @@ function GitHubSection() {
             { title: 'Private Repos', desc: 'Access private repositories after connecting your GitHub account. Private repos are shown with a lock icon.' },
             { title: 'Repo Search', desc: 'Instantly search across all your repositories by name. Results update as you type.' },
             { title: 'Auto-Scan', desc: 'InfraGraph scans the entire repository tree to find directories containing .tf files — no manual path entry needed.' },
-            { title: 'Direct Parse', desc: 'Parse Terraform files directly from GitHub. Files are fetched on demand — nothing is cloned or stored locally.' },
+            { title: 'Direct Parse', desc: 'Parse IaC files directly from GitHub. Files are fetched on demand — nothing is cloned or stored locally.' },
           ].map((item) => (
             <div key={item.title} className="p-3 rounded-lg border border-slate-200 dark:border-slate-700">
               <p className="text-sm font-medium text-slate-900 dark:text-white">{item.title}</p>
@@ -715,7 +719,7 @@ function GitHubSection() {
           The GitHub integration is also available via the REST API. Scan repos and parse projects
           from CI/CD pipelines, scripts, or custom integrations:
         </p>
-        <CodeBlock lang="bash">{`# Scan a repo for Terraform projects
+        <CodeBlock lang="bash">{`# Scan a repo for IaC projects
 curl -X POST http://localhost:3001/api/github/scan \\
   -H "Content-Type: application/json" \\
   -H "X-GitHub-Token: ghp_your_token" \\
@@ -918,11 +922,12 @@ curl -X POST "http://localhost:3001/api/parse?provider=aws" \\
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Response</p>
           <CodeBlock lang="json">{`{
-  "nodes": [...],      // React Flow graph nodes (id, type, position, data)
-  "edges": [...],      // React Flow graph edges (source, target, label)
-  "resources": [...],  // Extracted resource objects (type, name, attributes)
-  "provider": "aws",   // Detected or specified provider
-  "warnings": []       // Parse warnings (if any)
+  "nodes": [...],          // React Flow graph nodes (id, type, position, data)
+  "edges": [...],          // React Flow graph edges (source, target, label)
+  "resources": [...],      // Extracted resource objects (type, name, attributes)
+  "provider": "aws",       // Detected or specified cloud provider
+  "warnings": [],          // Parse warnings (if any)
+  "iacSource": "terraform-state"  // "terraform-state" | "terraform-hcl" | "cloudformation" | "cdk"
 }`}</CodeBlock>
         </div>
       </div>
@@ -960,6 +965,43 @@ curl -X POST "http://localhost:3001/api/parse?provider=aws" \\
         <CodeBlock lang="bash">{`curl -X POST http://localhost:3001/api/parse/raw \\
   -H "Content-Type: application/json" \\
   -d '{"tfstate": "<your-state-json-string>"}'`}</CodeBlock>
+      </div>
+
+      {/* POST /api/parse/cfn */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="px-2 py-1 rounded text-xs font-bold bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400">
+            POST
+          </span>
+          <code className="text-sm font-mono font-semibold">/api/parse/cfn</code>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Parse a CloudFormation or CDK template via multipart upload. Supports JSON and YAML formats.
+          Add <code className="text-xs font-mono">?source=cdk</code> to tag CDK-synthesized templates.
+        </p>
+        <CodeBlock lang="bash">{`# CloudFormation template
+curl -X POST http://localhost:3001/api/parse/cfn \\
+  -F "template=@my-stack.yaml"
+
+# CDK-synthesized template
+curl -X POST "http://localhost:3001/api/parse/cfn?source=cdk" \\
+  -F "template=@cdk.out/MyStack.template.json"`}</CodeBlock>
+      </div>
+
+      {/* POST /api/parse/cfn/raw */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="px-2 py-1 rounded text-xs font-bold bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400">
+            POST
+          </span>
+          <code className="text-sm font-mono font-semibold">/api/parse/cfn/raw</code>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Parse raw CloudFormation/CDK template content from the request body. Accepts JSON or YAML strings.
+        </p>
+        <CodeBlock lang="bash">{`curl -X POST http://localhost:3001/api/parse/cfn/raw \\
+  -H "Content-Type: application/json" \\
+  -d '{"template": "<your-cfn-template-string>"}'`}</CodeBlock>
       </div>
 
       {/* Divider: GitHub Endpoints */}
@@ -1038,7 +1080,7 @@ curl -X POST "http://localhost:3001/api/parse?provider=aws" \\
         </div>
         <p className="text-sm text-slate-500 dark:text-slate-400">
           Scan a GitHub repository for directories containing <code className="text-xs font-mono">.tf</code> files.
-          Returns a list of Terraform projects with their file listings.
+          Returns a list of IaC projects with their file listings.
         </p>
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Request</p>
@@ -1078,7 +1120,7 @@ curl -X POST "http://localhost:3001/api/parse?provider=aws" \\
           <code className="text-sm font-mono font-semibold">/api/github/parse</code>
         </div>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Parse a Terraform project directly from a GitHub repository. Fetches <code className="text-xs font-mono">.tf</code> files
+          Parse an IaC project directly from a GitHub repository. Fetches <code className="text-xs font-mono">.tf</code> files
           from the specified directory, parses HCL, and returns graph data.
         </p>
         <div className="space-y-2">
