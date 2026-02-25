@@ -1,0 +1,150 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "VPC with public/private subnets, EC2 instance, RDS, and supporting resources",
+  "Resources": {
+    "MainVPC": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "10.0.0.0/16",
+        "EnableDnsHostnames": true,
+        "EnableDnsSupport": true,
+        "Tags": [
+          { "Key": "Name", "Value": "main-vpc" },
+          { "Key": "Environment", "Value": "production" }
+        ]
+      }
+    },
+    "PublicSubnet1": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": { "Ref": "MainVPC" },
+        "CidrBlock": "10.0.1.0/24",
+        "AvailabilityZone": "us-east-1a",
+        "MapPublicIpOnLaunch": true,
+        "Tags": [
+          { "Key": "Name", "Value": "public-subnet-1" }
+        ]
+      }
+    },
+    "PrivateSubnet1": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": { "Ref": "MainVPC" },
+        "CidrBlock": "10.0.2.0/24",
+        "AvailabilityZone": "us-east-1a",
+        "Tags": [
+          { "Key": "Name", "Value": "private-subnet-1" }
+        ]
+      }
+    },
+    "InternetGateway": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {
+        "Tags": [
+          { "Key": "Name", "Value": "main-igw" }
+        ]
+      }
+    },
+    "IGWAttachment": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "VpcId": { "Ref": "MainVPC" },
+        "InternetGatewayId": { "Ref": "InternetGateway" }
+      }
+    },
+    "NatEIP": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc",
+        "Tags": [
+          { "Key": "Name", "Value": "nat-eip" }
+        ]
+      }
+    },
+    "NatGateway": {
+      "Type": "AWS::EC2::NatGateway",
+      "Properties": {
+        "SubnetId": { "Ref": "PublicSubnet1" },
+        "AllocationId": { "Fn::GetAtt": ["NatEIP", "AllocationId"] },
+        "Tags": [
+          { "Key": "Name", "Value": "main-nat" }
+        ]
+      }
+    },
+    "PublicRouteTable": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": { "Ref": "MainVPC" },
+        "Tags": [
+          { "Key": "Name", "Value": "public-rt" }
+        ]
+      }
+    },
+    "WebSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Allow HTTP and SSH",
+        "VpcId": { "Ref": "MainVPC" },
+        "SecurityGroupIngress": [
+          { "IpProtocol": "tcp", "FromPort": 80, "ToPort": 80, "CidrIp": "0.0.0.0/0" },
+          { "IpProtocol": "tcp", "FromPort": 443, "ToPort": 443, "CidrIp": "0.0.0.0/0" },
+          { "IpProtocol": "tcp", "FromPort": 22, "ToPort": 22, "CidrIp": "10.0.0.0/16" }
+        ],
+        "Tags": [
+          { "Key": "Name", "Value": "web-sg" }
+        ]
+      }
+    },
+    "WebServer": {
+      "Type": "AWS::EC2::Instance",
+      "DependsOn": "IGWAttachment",
+      "Properties": {
+        "InstanceType": "t3.medium",
+        "ImageId": "ami-0abcdef1234567890",
+        "SubnetId": { "Ref": "PublicSubnet1" },
+        "SecurityGroupIds": [{ "Ref": "WebSecurityGroup" }],
+        "Tags": [
+          { "Key": "Name", "Value": "web-server" }
+        ]
+      }
+    },
+    "DBSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Allow MySQL from web tier",
+        "VpcId": { "Ref": "MainVPC" },
+        "SecurityGroupIngress": [
+          { "IpProtocol": "tcp", "FromPort": 3306, "ToPort": 3306, "SourceSecurityGroupId": { "Ref": "WebSecurityGroup" } }
+        ],
+        "Tags": [
+          { "Key": "Name", "Value": "db-sg" }
+        ]
+      }
+    },
+    "Database": {
+      "Type": "AWS::RDS::DBInstance",
+      "Properties": {
+        "Engine": "mysql",
+        "EngineVersion": "8.0",
+        "DBInstanceClass": "db.t3.medium",
+        "AllocatedStorage": 50,
+        "MultiAZ": true,
+        "MasterUsername": "admin",
+        "MasterUserPassword": "changeme123",
+        "VPCSecurityGroups": [{ "Ref": "DBSecurityGroup" }],
+        "Tags": [
+          { "Key": "Name", "Value": "app-database" }
+        ]
+      }
+    },
+    "AppBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": "myapp-assets-prod",
+        "Tags": [
+          { "Key": "Name", "Value": "app-assets" }
+        ]
+      }
+    }
+  }
+}

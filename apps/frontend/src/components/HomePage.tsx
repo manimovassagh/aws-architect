@@ -208,6 +208,42 @@ export function HomePage() {
     }
   }
 
+  async function handleTryCfnSample() {
+    const sampleName = 'cfn-sample.json';
+    setState({ view: 'loading', fileName: sampleName });
+    try {
+      const res = await fetch('/cfn-sample.json');
+      const text = await res.text();
+      const blob = new Blob([text], { type: 'application/json' });
+      const file = new File([blob], sampleName);
+      const data = await parseCfn(file);
+      if (data.resources.length === 0) {
+        setState({ view: 'error', message: 'No resources found in sample template.', fileName: sampleName });
+        return;
+      }
+      const config = await getProviderFrontendConfig(data.provider);
+      setProviderConfig(config);
+      const iacLabel = data.iacSource ? IAC_SOURCE_LABELS[data.iacSource] : undefined;
+      setState({ view: 'canvas', provider: data.provider, data, selectedNodeId: null, fileName: sampleName, iacLabel });
+      navigate('/canvas');
+
+      if (user) {
+        void saveSession({
+          provider: data.provider,
+          fileName: sampleName,
+          resourceCount: data.resources.length,
+          data,
+        }).catch(() => {});
+      }
+    } catch (err) {
+      setState({
+        view: 'error',
+        message: err instanceof Error ? err.message : 'Failed to load sample',
+        fileName: sampleName,
+      });
+    }
+  }
+
   async function handleGitHubParsed(data: ParseResponse, fileName: string) {
     if (data.resources.length === 0) {
       setState({
@@ -298,6 +334,7 @@ export function HomePage() {
       <ProviderSelect
         onUpload={handleSmartUpload}
         onTrySample={handleTrySample}
+        onTryCfnSample={handleTryCfnSample}
         onGitHubParsed={handleGitHubParsed}
       />
     );

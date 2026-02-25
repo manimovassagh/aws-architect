@@ -17,10 +17,11 @@ const samples: { id: CloudProvider; label: string; color: string; count: string 
 interface ProviderSelectProps {
   onUpload: (files: File[], mode: 'tfstate' | 'hcl' | 'cfn' | 'cdk') => void;
   onTrySample: (provider: CloudProvider) => void;
+  onTryCfnSample: () => void;
   onGitHubParsed: (data: ParseResponse, fileName: string) => void;
 }
 
-export function ProviderSelect({ onUpload, onTrySample, onGitHubParsed }: ProviderSelectProps) {
+export function ProviderSelect({ onUpload, onTrySample, onTryCfnSample, onGitHubParsed }: ProviderSelectProps) {
   const [dark, setDark] = useState(() =>
     document.documentElement.classList.contains('dark'),
   );
@@ -126,7 +127,7 @@ export function ProviderSelect({ onUpload, onTrySample, onGitHubParsed }: Provid
             </button>
 
             {/* Sample pill buttons */}
-            <div className="flex items-center gap-3 mt-6">
+            <div className="flex flex-wrap items-center gap-3 mt-6">
               <span className="text-base text-slate-400 dark:text-slate-500">Try a sample:</span>
               {samples.map((s) => (
                 <button
@@ -138,6 +139,13 @@ export function ProviderSelect({ onUpload, onTrySample, onGitHubParsed }: Provid
                   {s.label}
                 </button>
               ))}
+              <button
+                onClick={onTryCfnSample}
+                className="px-4 py-1.5 text-base font-semibold rounded-full text-white transition-opacity hover:opacity-80"
+                style={{ backgroundColor: '#E7157B' }}
+              >
+                CloudFormation
+              </button>
             </div>
           </div>
 
