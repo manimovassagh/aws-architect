@@ -67,7 +67,7 @@ export function ResourceSummary({ resources, hiddenTypes, providerConfig, onTogg
   }
 
   return (
-    <div className="flex items-center gap-1 shrink-0">
+    <div className="flex items-center gap-1 min-w-0 flex-nowrap">
       <span className="text-xs font-medium text-slate-400 mr-1">{visibleCount} resources</span>
       <span className="text-slate-200 dark:text-slate-600">|</span>
       {visibleEntries.map(([type, count]) => renderTypeButton(type, count))}
