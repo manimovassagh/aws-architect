@@ -20,7 +20,7 @@ app.use(optionalAuth);
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', version: '1.0.0' });
+  res.json({ status: 'ok', version: '2.2.0' });
 });
 
 app.use('/api', parseRouter);

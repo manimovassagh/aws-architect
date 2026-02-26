@@ -100,11 +100,7 @@ export function parseCfnTemplate(raw: string): CfnTemplate {
 
 // ─── Extract CloudResources from CFN template ────────────────────────────────
 
-// Attribute keys commonly containing sensitive values
-const SENSITIVE_ATTR_PATTERNS = [
-  'password', 'secret', 'private_key', 'access_key', 'secret_key',
-  'token', 'api_key', 'auth', 'credential',
-];
+import { SENSITIVE_ATTR_PATTERNS } from './utils.js';
 
 export function extractResourcesFromCfn(
   template: CfnTemplate,

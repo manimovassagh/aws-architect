@@ -1,5 +1,6 @@
 import { parse } from '@cdktf/hcl2json';
 import type { CloudResource, ProviderConfig } from '@infragraph/shared';
+import { extractTags } from './utils.js';
 
 /**
  * Parse HCL .tf files and extract CloudResources compatible with buildGraphFromResources().
@@ -180,19 +181,6 @@ function extractDependencies(
     }
   }
   return Array.from(deps);
-}
-
-function extractTags(
-  attrs: Record<string, unknown>,
-): Record<string, string> {
-  const raw = attrs['tags'] ?? attrs['tags_all'];
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
-  return Object.fromEntries(
-    Object.entries(raw as Record<string, unknown>).map(([k, v]) => [
-      k,
-      String(v),
-    ]),
-  );
 }
 
 /**
