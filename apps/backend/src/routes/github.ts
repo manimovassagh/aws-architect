@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import type { ApiError, GitHubScanResponse } from '@infragraph/shared';
 import { parseRepoUrl, scanRepo, fetchTfFiles, exchangeCode, listUserRepos } from '../services/github.js';
-import { extractResourcesFromHcl } from '../parser/hcl.js';
+import { parseHclFiles, extractResourcesFromParsedHcl } from '../parser/hcl.js';
 import { buildGraphFromResources } from '../parser/graph.js';
 import { detectProviderFromTypes } from '../providers/index.js';
 
@@ -122,18 +122,11 @@ githubRouter.post('/github/parse', async (req, res) => {
     // Fetch .tf file contents
     const fileMap = await fetchTfFiles(owner, repo, defaultBranch, project.path, project.files, token);
 
-    // Detect provider from HCL resource types
-    const { parse: parseHcl } = await import('@cdktf/hcl2json');
-    const allTypes: string[] = [];
-    for (const [name, content] of fileMap) {
-      const result = await parseHcl(name, content);
-      const resourceBlocks = result['resource'] as Record<string, unknown> | undefined;
-      if (resourceBlocks) allTypes.push(...Object.keys(resourceBlocks));
-    }
-    const provider = detectProviderFromTypes(allTypes);
+    // Parse HCL once, detect provider, then extract resources
+    const { parsed: hclData, resourceTypes } = await parseHclFiles(fileMap);
+    const provider = detectProviderFromTypes(resourceTypes);
 
-    // Parse HCL and build graph
-    const { resources, warnings } = await extractResourcesFromHcl(fileMap, provider);
+    const { resources, warnings } = extractResourcesFromParsedHcl(hclData, provider);
     const graphResult = buildGraphFromResources(resources, warnings, provider);
 
     res.json({ ...graphResult, iacSource: 'terraform-hcl' });

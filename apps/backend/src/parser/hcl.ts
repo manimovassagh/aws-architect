@@ -3,19 +3,12 @@ import type { CloudResource, ProviderConfig } from '@infragraph/shared';
 import { extractTags } from './utils.js';
 
 /**
- * Parse HCL .tf files and extract CloudResources compatible with buildGraphFromResources().
- *
- * @param files Map of filename → file content
- * @param provider Provider config for reference resolution
+ * Parse and merge all HCL .tf files into a single object.
+ * Returns the merged HCL and the list of resource type keys (for provider detection).
  */
-export async function extractResourcesFromHcl(
+export async function parseHclFiles(
   files: Map<string, string>,
-  provider: ProviderConfig,
-): Promise<{ resources: CloudResource[]; warnings: string[] }> {
-  const warnings: string[] = [];
-  const resources: CloudResource[] = [];
-
-  // Parse each file individually and deep-merge the results
+): Promise<{ parsed: Record<string, unknown>; resourceTypes: string[] }> {
   let parsed: Record<string, unknown> = {};
   try {
     for (const [name, content] of files) {
@@ -28,6 +21,24 @@ export async function extractResourcesFromHcl(
       { cause: err },
     );
   }
+
+  const resourceBlocks = parsed['resource'] as Record<string, unknown> | undefined;
+  const resourceTypes = resourceBlocks ? Object.keys(resourceBlocks) : [];
+  return { parsed, resourceTypes };
+}
+
+/**
+ * Extract CloudResources from already-parsed HCL data.
+ *
+ * @param parsed Merged HCL parse result from parseHclFiles()
+ * @param provider Provider config for reference resolution
+ */
+export function extractResourcesFromParsedHcl(
+  parsed: Record<string, unknown>,
+  provider: ProviderConfig,
+): { resources: CloudResource[]; warnings: string[] } {
+  const warnings: string[] = [];
+  const resources: CloudResource[] = [];
 
   const resourceBlocks = parsed['resource'] as
     | Record<string, Record<string, Record<string, unknown>>>
@@ -76,6 +87,18 @@ export async function extractResourcesFromHcl(
   }
 
   return { resources, warnings };
+}
+
+/**
+ * Convenience: parse HCL files and extract resources in a single call.
+ * (Parses files only once internally.)
+ */
+export async function extractResourcesFromHcl(
+  files: Map<string, string>,
+  provider: ProviderConfig,
+): Promise<{ resources: CloudResource[]; warnings: string[] }> {
+  const { parsed } = await parseHclFiles(files);
+  return extractResourcesFromParsedHcl(parsed, provider);
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

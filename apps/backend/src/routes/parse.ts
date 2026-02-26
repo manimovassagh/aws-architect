@@ -3,7 +3,7 @@ import multer from 'multer';
 import { z } from 'zod';
 import { parseTfstate } from '../parser/tfstate.js';
 import { buildGraph, buildGraphFromResources } from '../parser/graph.js';
-import { extractResourcesFromHcl } from '../parser/hcl.js';
+import { parseHclFiles, extractResourcesFromParsedHcl } from '../parser/hcl.js';
 import { parseCfnTemplate, extractResourcesFromCfn } from '../parser/cloudformation.js';
 import { extractResourcesFromPlan, type TerraformPlan } from '../parser/plan.js';
 import { detectProvider, detectProviderFromTypes, getProvider } from '../providers/index.js';
@@ -113,21 +113,12 @@ parseRouter.post('/parse/hcl', hclUpload.array('files', 50), async (req, res) =>
       fileMap.set(f.originalname, f.buffer.toString('utf-8'));
     }
 
-    // Detect provider from resource type keys in the HCL, or use query param
+    // Parse HCL once, detect provider from resource types, then extract resources
     const override = resolveProviderParam(req.query['provider']);
-    // We need to peek at resource types for auto-detection before full parse
-    // For simplicity, parse first with detected provider
-    // Quick-parse to get resource type keys
-    const { parse: parseHcl } = await import('@cdktf/hcl2json');
-    const allTypes: string[] = [];
-    for (const [name, content] of fileMap) {
-      const result = await parseHcl(name, content);
-      const resourceBlocks = result['resource'] as Record<string, unknown> | undefined;
-      if (resourceBlocks) allTypes.push(...Object.keys(resourceBlocks));
-    }
-    const provider = override ? getProvider(override) : detectProviderFromTypes(allTypes);
+    const { parsed, resourceTypes } = await parseHclFiles(fileMap);
+    const provider = override ? getProvider(override) : detectProviderFromTypes(resourceTypes);
 
-    const { resources, warnings } = await extractResourcesFromHcl(fileMap, provider);
+    const { resources, warnings } = extractResourcesFromParsedHcl(parsed, provider);
     const graphResult = buildGraphFromResources(resources, warnings, provider);
     const response: ParseResponse = { ...graphResult, iacSource: 'terraform-hcl' };
     res.json(response);
