@@ -37,6 +37,7 @@ interface CanvasProps {
   provider?: string;
   fileName?: string;
   blastRadiusMode?: boolean;
+  costMap?: Map<string, string>;
   onNodeSelect: (nodeId: string | null) => void;
   onBlastRadiusComputed?: (count: number) => void;
 }
@@ -98,7 +99,7 @@ function computeBlastRadius(
 }
 
 export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(
-  { graphNodes, graphEdges, selectedNodeId, searchQuery, hiddenTypes, providerConfig, provider, fileName, blastRadiusMode, onNodeSelect, onBlastRadiusComputed },
+  { graphNodes, graphEdges, selectedNodeId, searchQuery, hiddenTypes, providerConfig, provider, fileName, blastRadiusMode, costMap, onNodeSelect, onBlastRadiusComputed },
   ref,
 ) {
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -323,6 +324,31 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(
     return rules.length > 0 ? rules.join('\n') : null;
   }, [hoverConnected, visibleNodes, visibleEdges]);
 
+  // Cost badge overlay via CSS ::after pseudo-elements
+  const costStyle = useMemo(() => {
+    if (!costMap || costMap.size === 0) return null;
+    const rules: string[] = [];
+    for (const n of visibleNodes) {
+      const costLabel = costMap.get(n.id);
+      if (costLabel) {
+        const sel = `.react-flow__node[data-id="${CSS.escape(n.id)}"]`;
+        rules.push(
+          `${sel}{position:relative}` +
+          `${sel}::after{` +
+          `content:"${costLabel}";` +
+          `position:absolute;bottom:-6px;right:-6px;` +
+          `font-size:9px;font-weight:700;line-height:1;` +
+          `background:#059669;color:#fff;` +
+          `padding:2px 5px;border-radius:8px;` +
+          `pointer-events:none;z-index:10;` +
+          `box-shadow:0 1px 3px rgba(0,0,0,0.2);` +
+          `white-space:nowrap}`,
+        );
+      }
+    }
+    return rules.length > 0 ? rules.join('\n') : null;
+  }, [costMap, visibleNodes]);
+
   // Style edges — only recompute on selection, not hover (hover handled by CSS)
   const edges = useMemo(
     () =>
@@ -377,6 +403,7 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(
     <div ref={wrapperRef} className="w-full h-full">
       {hoverDimStyle && !blastRadius && <style>{hoverDimStyle}</style>}
       {blastRadiusStyle && <style>{blastRadiusStyle}</style>}
+      {costStyle && <style>{costStyle}</style>}
       <ReactFlow
         nodes={nodes}
         edges={edges}
