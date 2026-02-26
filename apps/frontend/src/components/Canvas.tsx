@@ -421,7 +421,15 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(
         <Controls />
         <MiniMap
           nodeColor={providerConfig.minimapNodeColor}
-          maskColor="rgba(248, 250, 252, 0.7)"
+          nodeStrokeColor={providerConfig.minimapNodeColor}
+          nodeStrokeWidth={2}
+          nodeBorderRadius={3}
+          maskColor={document.documentElement.classList.contains('dark')
+            ? 'rgba(15, 23, 42, 0.75)'
+            : 'rgba(248, 250, 252, 0.7)'}
+          pannable
+          zoomable
+          className="!bg-white/80 dark:!bg-slate-900/80 !border !border-slate-200 dark:!border-slate-700 !rounded-lg !shadow-lg"
         />
       </ReactFlow>
       {showPlanLegend && (
