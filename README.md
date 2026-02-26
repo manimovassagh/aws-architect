@@ -1,6 +1,13 @@
 # InfraGraph
 
-[![Quality & Tests](https://github.com/manimovassagh/infragraph/actions/workflows/aws-architect-ci.yml/badge.svg)](https://github.com/manimovassagh/infragraph/actions/workflows/aws-architect-ci.yml)
+[![CI](https://github.com/manimovassagh/infragraph/actions/workflows/aws-architect-ci.yml/badge.svg)](https://github.com/manimovassagh/infragraph/actions/workflows/aws-architect-ci.yml)
+[![Release](https://img.shields.io/github/v/release/manimovassagh/infragraph?color=blue)](https://github.com/manimovassagh/infragraph/releases)
+[![License](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev/)
+[![Node](https://img.shields.io/badge/Node.js-22-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/manimovassagh/infragraph/pulls)
 
 Visualize your Infrastructure-as-Code as interactive architecture diagrams. Upload Terraform state files, HCL source, CloudFormation templates, or CDK-synthesized output — InfraGraph auto-detects your cloud provider and IaC tool, then renders a live, zoomable canvas with VPCs, subnets, and resources.
 
