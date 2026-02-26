@@ -115,7 +115,7 @@ export async function scanRepo(
   token?: string,
 ): Promise<{ defaultBranch: string; projects: GitHubTerraformProject[] }> {
   // Use the Git Trees API with recursive=1 to get the full file tree in one call
-  const treeUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`;
+  const treeUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
   const res = await fetch(treeUrl, {
     headers: ghHeaders(token),
   });
@@ -174,7 +174,7 @@ export async function fetchTfFiles(
       projectPath === '.' ? fileName : `${projectPath}/${fileName}`;
     if (token) {
       // Use API for private repos (raw.githubusercontent.com doesn't support auth well)
-      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}?ref=${branch}`;
+      const apiUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${filePath.split('/').map(encodeURIComponent).join('/')}?ref=${encodeURIComponent(branch)}`;
       const res = await fetch(apiUrl, {
         headers: { ...ghHeaders(token), Accept: 'application/vnd.github.v3.raw' },
       });
@@ -183,7 +183,7 @@ export async function fetchTfFiles(
       }
       fileMap.set(fileName, await res.text());
     } else {
-      const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${filePath}`;
+      const rawUrl = `https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/${encodeURIComponent(branch)}/${filePath.split('/').map(encodeURIComponent).join('/')}`;
       const res = await fetch(rawUrl);
       if (!res.ok) {
         throw new Error(`Failed to fetch ${filePath}: ${res.status}`);

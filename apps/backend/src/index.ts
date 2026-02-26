@@ -12,7 +12,8 @@ import { optionalAuth } from './middleware/auth.js';
 const app = express();
 const PORT = process.env.PORT ?? 3001;
 
-app.use(cors({ origin: process.env.FRONTEND_URL ?? 'http://localhost:3000' }));
+const allowedOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:3000').split(',').map((s) => s.trim());
+app.use(cors({ origin: allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins }));
 app.use(express.json({ limit: '50mb' }));
 app.use(optionalAuth);
 

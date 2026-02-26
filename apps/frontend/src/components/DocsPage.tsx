@@ -1196,7 +1196,7 @@ curl -X POST "http://localhost:3001/api/parse/cfn?source=cdk" \\
 
 function KeyboardSection({ dark }: { dark: boolean }) {
   const shortcuts = [
-    { keys: ['&#8984;', 'K'], desc: 'Focus search bar' },
+    { keys: ['\u2318', 'K'], desc: 'Focus search bar' },
     { keys: ['Esc'], desc: 'Clear search / deselect node' },
     { keys: ['?'], desc: 'Toggle keyboard shortcuts help' },
     { keys: ['Scroll'], desc: 'Zoom in/out on canvas' },
@@ -1225,8 +1225,9 @@ function KeyboardSection({ dark }: { dark: boolean }) {
                       ? 'bg-slate-800 border-slate-600 text-slate-300'
                       : 'bg-slate-100 border-slate-200 text-slate-600'
                   }`}
-                  dangerouslySetInnerHTML={{ __html: k }}
-                />
+                >
+                  {k}
+                </kbd>
               ))}
             </div>
           </div>

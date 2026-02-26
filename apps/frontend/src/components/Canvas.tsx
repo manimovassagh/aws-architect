@@ -336,7 +336,7 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(
         rules.push(
           `${sel}{position:relative}` +
           `${sel}::after{` +
-          `content:"${costLabel}";` +
+          `content:"${costLabel.replace(/["\\]/g, (c) => '\\' + c)}";` +
           `position:absolute;bottom:-6px;right:-6px;` +
           `font-size:9px;font-weight:700;line-height:1;` +
           `background:#059669;color:#fff;` +

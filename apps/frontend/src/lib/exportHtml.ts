@@ -11,8 +11,8 @@ export function generateStandaloneHtml(
   fileName: string,
   dark: boolean,
 ): string {
-  const nodesJson = JSON.stringify(nodes);
-  const edgesJson = JSON.stringify(edges);
+  const nodesJson = JSON.stringify(nodes).replace(/</g, '\\u003c');
+  const edgesJson = JSON.stringify(edges).replace(/</g, '\\u003c');
 
   return `<!DOCTYPE html>
 <html lang="en" class="${dark ? 'dark' : ''}">
