@@ -17,7 +17,7 @@ async function uploadAndParse(page: import('@playwright/test').Page) {
 test.describe('Upload flow', () => {
   test('shows upload area and provider cards on initial load', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText(/Drop .tfstate or .tf files here/i)).toBeVisible();
+    await expect(page.getByText(/Drop Terraform, CloudFormation, or CDK files here/i)).toBeVisible();
     await expect(page.getByRole('button', { name: 'AWS' })).toBeVisible();
   });
 
