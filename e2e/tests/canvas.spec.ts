@@ -19,7 +19,9 @@ test.describe('Canvas interactions', () => {
     await expect(page.locator('.react-flow__controls')).toBeVisible();
   });
 
-  test('minimap is visible', async ({ page }) => {
+  test('minimap is visible after toggle', async ({ page }) => {
+    // Minimap is hidden by default — click the toggle button to show it
+    await page.getByTitle('Show minimap').click();
     await expect(page.locator('.react-flow__minimap')).toBeVisible();
   });
 
