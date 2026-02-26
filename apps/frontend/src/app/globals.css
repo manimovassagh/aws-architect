@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+/* quality gate demo — will be reverted */
+
 
 /* React Flow light theme */
 .react-flow__background {
