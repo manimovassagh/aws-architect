@@ -1,25 +1,34 @@
-import { Router } from 'express';
+import { Router, type Response, type NextFunction } from 'express';
 import { z } from 'zod';
 import { supabase } from '../supabase.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 
 export const sessionsRouter = Router();
 
+/** Wrap an async route handler so rejected promises are forwarded to Express error handling. */
+function asyncHandler(fn: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>) {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const createSessionSchema = z.object({
   provider: z.enum(['aws', 'azure', 'gcp']),
   fileName: z.string().min(1),
   resourceCount: z.number().int().min(0),
   data: z.object({
-    nodes: z.array(z.any()),
-    edges: z.array(z.any()),
-    resources: z.array(z.any()),
+    nodes: z.array(z.record(z.string(), z.unknown())),
+    edges: z.array(z.record(z.string(), z.unknown())),
+    resources: z.array(z.record(z.string(), z.unknown())),
     provider: z.enum(['aws', 'azure', 'gcp']),
     warnings: z.array(z.string()),
   }),
 });
 
 /** GET /api/sessions — list user's sessions (summaries, no data blob) */
-sessionsRouter.get('/sessions', requireAuth, async (req: AuthRequest, res) => {
+sessionsRouter.get('/sessions', requireAuth, asyncHandler(async (req, res) => {
   if (!supabase) {
     res.status(503).json({ error: 'Database not configured' });
     return;
@@ -32,7 +41,7 @@ sessionsRouter.get('/sessions', requireAuth, async (req: AuthRequest, res) => {
     .order('created_at', { ascending: false });
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to fetch sessions' });
     return;
   }
 
@@ -45,10 +54,15 @@ sessionsRouter.get('/sessions', requireAuth, async (req: AuthRequest, res) => {
       createdAt: row.created_at,
     })),
   );
-});
+}));
 
 /** GET /api/sessions/:id — get full session with data */
-sessionsRouter.get('/sessions/:id', requireAuth, async (req: AuthRequest, res) => {
+sessionsRouter.get('/sessions/:id', requireAuth, asyncHandler(async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) {
+    res.status(400).json({ error: 'Invalid session ID format' });
+    return;
+  }
+
   if (!supabase) {
     res.status(503).json({ error: 'Database not configured' });
     return;
@@ -75,10 +89,10 @@ sessionsRouter.get('/sessions/:id', requireAuth, async (req: AuthRequest, res) =
     data: data.data,
     createdAt: data.created_at,
   });
-});
+}));
 
 /** POST /api/sessions — save a new session */
-sessionsRouter.post('/sessions', requireAuth, async (req: AuthRequest, res) => {
+sessionsRouter.post('/sessions', requireAuth, asyncHandler(async (req, res) => {
   if (!supabase) {
     res.status(503).json({ error: 'Database not configured' });
     return;
@@ -105,7 +119,7 @@ sessionsRouter.post('/sessions', requireAuth, async (req: AuthRequest, res) => {
     .single();
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to save session' });
     return;
   }
 
@@ -116,10 +130,15 @@ sessionsRouter.post('/sessions', requireAuth, async (req: AuthRequest, res) => {
     resourceCount,
     createdAt: data.created_at,
   });
-});
+}));
 
 /** DELETE /api/sessions/:id — delete a session */
-sessionsRouter.delete('/sessions/:id', requireAuth, async (req: AuthRequest, res) => {
+sessionsRouter.delete('/sessions/:id', requireAuth, asyncHandler(async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) {
+    res.status(400).json({ error: 'Invalid session ID format' });
+    return;
+  }
+
   if (!supabase) {
     res.status(503).json({ error: 'Database not configured' });
     return;
@@ -132,9 +151,9 @@ sessionsRouter.delete('/sessions/:id', requireAuth, async (req: AuthRequest, res
     .eq('user_id', req.userId!);
 
   if (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to delete session' });
     return;
   }
 
   res.status(204).send();
-});
+}));

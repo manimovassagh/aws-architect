@@ -412,6 +412,20 @@ export function HomePage() {
     return map;
   }, [showCosts, costEstimates]);
 
+  // Security scan (memoized to avoid O(resources × rules) on every render)
+  const securityFindings = useMemo(
+    () => (state.view === 'canvas' ? runSecurityScan(state.data.resources, state.data.edges) : []),
+    [state.view, canvasResources], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const securityIssueCount = useMemo(
+    () => securityFindings.filter((f) => f.severity !== 'info').length,
+    [securityFindings],
+  );
+  const securityWorstColor = useMemo(() => {
+    const worst = securityFindings.length > 0 ? securityFindings[0]!.severity : null;
+    return worst ? SEVERITY_CONFIG[worst].color : '#6b7280';
+  }, [securityFindings]);
+
   // Direct /canvas access with no data → redirect to landing
   // (but allow through if session is being hydrated from /history)
   if (location.pathname === '/canvas' && state.view !== 'canvas' && !sessionStorage.getItem('loadSession')) {
@@ -494,32 +508,24 @@ export function HomePage() {
               <SearchBar ref={searchBarRef} onSearch={setSearchQuery} />
               <div className="flex items-center gap-1.5 shrink-0">
               {/* Security scan button */}
-              {(() => {
-                const findings = runSecurityScan(state.data.resources, state.data.edges);
-                const issues = findings.filter((f) => f.severity !== 'info').length;
-                const worst = findings.length > 0 ? findings[0]!.severity : null;
-                const sevColor = worst ? SEVERITY_CONFIG[worst].color : '#6b7280';
-                return (
-                  <button
-                    onClick={() => { setShowSecurity((v) => !v); if (!showSecurity) setState((prev) => prev.view === 'canvas' ? { ...prev, selectedNodeId: null } : prev); }}
-                    className={`flex items-center gap-1.5 rounded-lg backdrop-blur-sm border px-3 py-1.5 shadow-sm text-xs transition-colors ${
-                      showSecurity
-                        ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300'
-                        : 'bg-white/90 dark:bg-slate-800/90 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300'
-                    }`}
-                    title="Security scan"
-                  >
-                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                    </svg>
-                    {issues > 0 && (
-                      <span className="font-semibold px-1.5 py-0.5 rounded-full text-[10px]" style={{ color: sevColor, backgroundColor: sevColor + '18' }}>
-                        {issues}
-                      </span>
-                    )}
-                  </button>
-                );
-              })()}
+              <button
+                onClick={() => { setShowSecurity((v) => !v); if (!showSecurity) setState((prev) => prev.view === 'canvas' ? { ...prev, selectedNodeId: null } : prev); }}
+                className={`flex items-center gap-1.5 rounded-lg backdrop-blur-sm border px-3 py-1.5 shadow-sm text-xs transition-colors ${
+                  showSecurity
+                    ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300'
+                    : 'bg-white/90 dark:bg-slate-800/90 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300'
+                }`}
+                title="Security scan"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                </svg>
+                {securityIssueCount > 0 && (
+                  <span className="font-semibold px-1.5 py-0.5 rounded-full text-[10px]" style={{ color: securityWorstColor, backgroundColor: securityWorstColor + '18' }}>
+                    {securityIssueCount}
+                  </span>
+                )}
+              </button>
               {/* Cost estimation toggle */}
               <button
                 onClick={() => setShowCosts((v) => !v)}

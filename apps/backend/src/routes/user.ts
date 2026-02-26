@@ -1,11 +1,18 @@
-import { Router } from 'express';
+import { Router, type Response, type NextFunction } from 'express';
 import { supabase } from '../supabase.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 
 export const userRouter = Router();
 
+/** Wrap an async route handler so rejected promises are forwarded to Express error handling. */
+function asyncHandler(fn: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>) {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+}
+
 /** GET /api/user/profile — get current user's profile */
-userRouter.get('/user/profile', requireAuth, async (req: AuthRequest, res) => {
+userRouter.get('/user/profile', requireAuth, asyncHandler(async (req, res) => {
   if (!supabase) {
     res.status(503).json({ error: 'Database not configured' });
     return;
@@ -30,4 +37,4 @@ userRouter.get('/user/profile', requireAuth, async (req: AuthRequest, res) => {
     tier: data.tier,
     sessionLimit: data.session_limit,
   });
-});
+}));

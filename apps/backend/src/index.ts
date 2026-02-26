@@ -27,11 +27,11 @@ app.use('/api', sessionsRouter);
 app.use('/api', userRouter);
 app.use('/api', githubRouter);
 
-// Global error handler — catches unhandled errors from middleware (e.g. multer)
+// Global error handler — catches unhandled errors from middleware and async routes
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('Unhandled error:', err.message);
-  res.status(500).json({ error: err.message });
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 app.listen(PORT, () => {
