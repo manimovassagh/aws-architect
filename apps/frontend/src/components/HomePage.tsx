@@ -13,6 +13,8 @@ import { InventoryTable } from '@/components/InventoryTable';
 import { SecurityPanel } from '@/components/SecurityPanel';
 import { runSecurityScan, SEVERITY_CONFIG } from '@/lib/securityRules';
 import { relayoutNodes, LAYOUT_OPTIONS, type LayoutMode } from '@/lib/layoutEngine';
+import { estimateCosts, totalMonthlyCost, formatCost } from '@/lib/costEstimator';
+import { CostPanel } from '@/components/CostPanel';
 import { parseFile, parseHcl, parseCfn, parsePlan, saveSession } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import { UserMenu } from '@/components/UserMenu';
@@ -54,6 +56,7 @@ export function HomePage() {
   const [showSecurity, setShowSecurity] = useState(false);
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('hierarchical');
   const [showLayoutMenu, setShowLayoutMenu] = useState(false);
+  const [showCosts, setShowCosts] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchBarRef = useRef<SearchBarHandle>(null);
   const canvasRef = useRef<CanvasHandle>(null);
@@ -386,6 +389,28 @@ export function HomePage() {
     [canvasNodes, layoutMode],
   );
 
+  // Cost estimation
+  const canvasResources = useMemo(
+    () => (state.view === 'canvas' ? state.data.resources : []),
+    [state.view, state.view === 'canvas' ? state.data : null], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const costEstimates = useMemo(
+    () => estimateCosts(canvasResources),
+    [canvasResources],
+  );
+  const costTotal = useMemo(
+    () => totalMonthlyCost(costEstimates),
+    [costEstimates],
+  );
+  const costMap = useMemo(() => {
+    if (!showCosts || costEstimates.length === 0) return undefined;
+    const map = new Map<string, string>();
+    for (const e of costEstimates) {
+      map.set(e.resourceId, formatCost(e.monthlyCost) + '/mo');
+    }
+    return map;
+  }, [showCosts, costEstimates]);
+
   // Direct /canvas access with no data → redirect to landing
   // (but allow through if session is being hydrated from /history)
   if (location.pathname === '/canvas' && state.view !== 'canvas' && !sessionStorage.getItem('loadSession')) {
@@ -494,6 +519,26 @@ export function HomePage() {
                   </button>
                 );
               })()}
+              {/* Cost estimation toggle */}
+              <button
+                onClick={() => setShowCosts((v) => !v)}
+                className={`flex items-center gap-1.5 rounded-lg backdrop-blur-sm border px-3 py-1.5 shadow-sm text-xs transition-colors ${
+                  showCosts
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300'
+                    : 'bg-white/90 dark:bg-slate-800/90 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300'
+                }`}
+                title={showCosts ? 'Hide cost estimates' : 'Show cost estimates'}
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="hidden xl:inline">Costs</span>
+                {costTotal > 0 && (
+                  <span className={`font-semibold text-[10px] ${showCosts ? '' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                    {formatCost(costTotal)}/mo
+                  </span>
+                )}
+              </button>
               {/* View mode toggle */}
               <button
                 onClick={() => setViewMode((v) => v === 'graph' ? 'table' : 'graph')}
@@ -679,6 +724,7 @@ export function HomePage() {
                 provider={state.data.provider}
                 fileName={state.fileName}
                 blastRadiusMode={blastRadiusMode}
+                costMap={costMap}
                 onBlastRadiusComputed={setBlastRadiusCount}
                 onNodeSelect={(id) =>
                   setState((prev) =>
@@ -694,11 +740,25 @@ export function HomePage() {
                 searchQuery={searchQuery}
                 providerConfig={providerConfig}
                 selectedResourceId={state.selectedNodeId}
+                costEstimates={showCosts ? costEstimates : undefined}
                 onSelectResource={(id) =>
                   setState((prev) =>
                     prev.view === 'canvas' ? { ...prev, selectedNodeId: id } : prev
                   )
                 }
+              />
+            )}
+            {/* Cost breakdown panel */}
+            {showCosts && costEstimates.length > 0 && (
+              <CostPanel
+                estimates={costEstimates}
+                providerConfig={providerConfig}
+                onSelectResource={(id) =>
+                  setState((prev) =>
+                    prev.view === 'canvas' ? { ...prev, selectedNodeId: id } : prev
+                  )
+                }
+                onClose={() => setShowCosts(false)}
               />
             )}
           </div>

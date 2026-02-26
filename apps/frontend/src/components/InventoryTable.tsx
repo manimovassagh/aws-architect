@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react';
 import type { CloudResource, GraphEdge } from '@infragraph/shared';
 import type { ProviderFrontendConfig } from '@/providers/types';
+import type { CostEstimate } from '@/lib/costEstimator';
+import { formatCost } from '@/lib/costEstimator';
 import { GenericIcon } from './nodes/icons/AwsIcons';
 
-type SortKey = 'displayName' | 'type' | 'region';
+type SortKey = 'displayName' | 'type' | 'region' | 'cost';
 type SortDir = 'asc' | 'desc';
 
 interface InventoryTableProps {
@@ -14,6 +16,7 @@ interface InventoryTableProps {
   providerConfig: ProviderFrontendConfig;
   onSelectResource: (id: string) => void;
   selectedResourceId: string | null;
+  costEstimates?: CostEstimate[];
 }
 
 function matchesSearch(r: CloudResource, query: string): boolean {
@@ -37,9 +40,18 @@ export function InventoryTable({
   providerConfig,
   onSelectResource,
   selectedResourceId,
+  costEstimates,
 }: InventoryTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('type');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  // Precompute cost lookup
+  const costByResource = useMemo(() => {
+    if (!costEstimates) return null;
+    const map = new Map<string, number>();
+    for (const e of costEstimates) map.set(e.resourceId, e.monthlyCost);
+    return map;
+  }, [costEstimates]);
 
   // Precompute connection counts
   const connectionCounts = useMemo(() => {
@@ -70,11 +82,13 @@ export function InventoryTable({
         cmp = labelA.localeCompare(labelB);
       } else if (sortKey === 'region') {
         cmp = (a.region ?? '').localeCompare(b.region ?? '');
+      } else if (sortKey === 'cost' && costByResource) {
+        cmp = (costByResource.get(a.id) ?? 0) - (costByResource.get(b.id) ?? 0);
       }
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return sorted;
-  }, [resources, hiddenTypes, searchQuery, sortKey, sortDir, providerConfig.typeConfig]);
+  }, [resources, hiddenTypes, searchQuery, sortKey, sortDir, providerConfig.typeConfig, costByResource]);
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -108,7 +122,7 @@ export function InventoryTable({
     <div className="flex flex-col h-full bg-white dark:bg-slate-900 pt-14">
       {/* Table header */}
       <div className="sticky top-0 z-[5] bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-        <div className="grid grid-cols-[1fr_140px_120px_80px] gap-2 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+        <div className={`grid gap-2 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 ${costByResource ? 'grid-cols-[1fr_140px_120px_80px_80px]' : 'grid-cols-[1fr_140px_120px_80px]'}`}>
           <button onClick={() => handleSort('displayName')} className="flex items-center gap-1 hover:text-slate-600 dark:hover:text-slate-300 transition-colors text-left">
             Name {sortIcon('displayName')}
           </button>
@@ -119,6 +133,11 @@ export function InventoryTable({
             Region {sortIcon('region')}
           </button>
           <span className="text-right">Links</span>
+          {costByResource && (
+            <button onClick={() => handleSort('cost')} className="flex items-center gap-1 justify-end hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+              Est. Cost {sortIcon('cost')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -143,7 +162,7 @@ export function InventoryTable({
               <button
                 key={r.id}
                 onClick={() => onSelectResource(r.id)}
-                className={`w-full grid grid-cols-[1fr_140px_120px_80px] gap-2 px-4 py-3 text-left border-b border-slate-100 dark:border-slate-800 transition-colors ${
+                className={`w-full grid gap-2 px-4 py-3 text-left border-b border-slate-100 dark:border-slate-800 transition-colors ${costByResource ? 'grid-cols-[1fr_140px_120px_80px_80px]' : 'grid-cols-[1fr_140px_120px_80px]'} ${
                   isSelected
                     ? 'bg-violet-50 dark:bg-violet-950/30 border-l-2 border-l-violet-500'
                     : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
@@ -199,6 +218,19 @@ export function InventoryTable({
                     <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
                   )}
                 </div>
+
+                {/* Cost */}
+                {costByResource && (
+                  <div className="flex items-start justify-end pt-0.5">
+                    {costByResource.has(r.id) ? (
+                      <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                        {formatCost(costByResource.get(r.id)!)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
+                    )}
+                  </div>
+                )}
               </button>
             );
           })
@@ -210,6 +242,11 @@ export function InventoryTable({
         <span className="text-xs text-slate-400 dark:text-slate-500">
           {filtered.length} of {resources.length} resources
         </span>
+        {costByResource && (
+          <span className="text-[10px] text-amber-600/60 dark:text-amber-400/50">
+            Cost estimates only — not for budgeting
+          </span>
+        )}
       </div>
     </div>
   );
