@@ -1,4 +1,4 @@
-import type { CloudProvider, ParseResponse, ApiError, SessionSummary, Session, CreateSessionRequest, GitHubScanResponse, GitHubRepo, GitHubTokenResponse } from '@infragraph/shared';
+import type { CloudProvider, ParseResponse, ApiError, SessionSummary, Session, CreateSessionRequest, GitHubScanResponse, GitHubRepo, GitHubTokenResponse, AiStatusResponse, AiModelsResponse, AiChatRequest, AiChatResponse } from '@infragraph/shared';
 import { supabase } from './supabase';
 import { getGitHubToken } from './github';
 
@@ -174,6 +174,42 @@ export async function parseGitHubProject(repoUrl: string, projectPath: string): 
     method: 'POST',
     headers,
     body: JSON.stringify({ repoUrl, projectPath }),
+  });
+  if (!res.ok) {
+    const err: ApiError = await res.json();
+    throw new Error(err.details ?? err.error);
+  }
+  return res.json();
+}
+
+// ─── AI Assistant API ─────────────────────────────────────────────────────────
+
+export async function getAiStatus(): Promise<AiStatusResponse> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API_BASE}/api/ai/status`, { headers });
+  if (!res.ok) {
+    const err: ApiError = await res.json();
+    throw new Error(err.details ?? err.error);
+  }
+  return res.json();
+}
+
+export async function listAiModels(): Promise<AiModelsResponse> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API_BASE}/api/ai/models`, { headers });
+  if (!res.ok) {
+    const err: ApiError = await res.json();
+    throw new Error(err.details ?? err.error);
+  }
+  return res.json();
+}
+
+export async function sendAiChat(request: AiChatRequest): Promise<AiChatResponse> {
+  const headers = { 'Content-Type': 'application/json', ...(await authHeaders()) };
+  const res = await fetch(`${API_BASE}/api/ai/chat`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(request),
   });
   if (!res.ok) {
     const err: ApiError = await res.json();

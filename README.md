@@ -17,12 +17,19 @@ Visualize your Infrastructure-as-Code as interactive architecture diagrams. Uplo
 
 ![InfraGraph Documentation](docs/infragraph-docs.png)
 
+### AI Infrastructure Advisor
+
+![AI Chat Page](docs/screenshots/ai/02-ai-page-conversation.png)
+
+![AI Canvas Panel](docs/screenshots/ai/06-canvas-ai-panel-conversation.png)
+
 ## Features
 
 - **Multi-IaC** — Supports Terraform (`.tfstate`, `.tf`), AWS CloudFormation (JSON/YAML), and AWS CDK (synthesized templates)
 - **Multi-cloud** — AWS (20+), Azure (12+), and GCP (11+) resource types with branded icons
 - **GitHub Integration** — Connect your GitHub account, browse repos (including private), scan for IaC projects, and visualize directly
 - **REST API** — Full programmatic access for CI/CD pipelines, scripts, and custom integrations
+- **AI Infrastructure Advisor** — Local Ollama-powered chat that analyzes your parsed infrastructure — architecture reviews, security recommendations, cost suggestions, and natural language Q&A (fully Dockerized, no API keys needed)
 - **Session History** — Save and revisit past diagrams (requires Supabase auth)
 - Smart file detection — auto-detects IaC tool and cloud provider from file content
 - Auto-layout: VPC > Subnet > Resource hierarchy with nested containers
@@ -48,8 +55,8 @@ infragraph/
 │   │   ├── src/
 │   │   │   ├── parser/    # tfstate, HCL, CloudFormation, and graph parsers
 │   │   │   ├── providers/ # Cloud provider configs (aws, azure, gcp)
-│   │   │   ├── services/  # GitHub service (OAuth, repos, scan, fetch)
-│   │   │   ├── routes/    # API route handlers (parse, github, sessions, user)
+│   │   │   ├── services/  # GitHub service, Ollama AI service
+│   │   │   ├── routes/    # API route handlers (parse, github, sessions, user, ai)
 │   │   │   └── middleware/ # Auth middleware (optionalAuth, requireAuth)
 │   │   └── Dockerfile
 │   └── frontend/          # Vite + React 18 — React Flow canvas + UI
@@ -100,6 +107,8 @@ Open http://localhost:3000 and upload a `.tfstate`, `.tf`, or CloudFormation tem
 | `SUPABASE_SERVICE_ROLE_KEY` | No | Supabase service role key |
 | `GITHUB_CLIENT_ID` | No | GitHub OAuth App client ID (enables GitHub connect) |
 | `GITHUB_CLIENT_SECRET` | No | GitHub OAuth App client secret |
+| `OLLAMA_BASE_URL` | No | Ollama server URL (default: http://localhost:11434) |
+| `OLLAMA_DEFAULT_MODEL` | No | Default LLM model (default: tinyllama) |
 
 ### Frontend (`apps/frontend/.env`)
 
@@ -173,6 +182,14 @@ Interactive Swagger docs available at http://localhost:3001/docs when the backen
 | `GET` | `/api/github/repos` | List authenticated user's repos (requires `X-GitHub-Token` header) |
 | `POST` | `/api/github/scan` | Scan a repo for Terraform projects |
 | `POST` | `/api/github/parse` | Parse a Terraform project from a GitHub repo |
+
+### AI Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/ai/status` | Check Ollama availability and model status |
+| `GET` | `/api/ai/models` | List available Ollama models |
+| `POST` | `/api/ai/chat` | Send chat messages with optional infrastructure context |
 
 ### System
 
@@ -308,6 +325,44 @@ curl -X POST http://localhost:3001/api/parse/cfn?source=cdk \
 All parse responses return graph data (nodes, edges, resources, provider) that can be rendered with React Flow or any graph library.
 
 > **Tip:** The `X-GitHub-Token` header is optional for public repos. Adding it increases the GitHub API rate limit from 60 to 5,000 requests per hour.
+
+## AI Infrastructure Advisor
+
+InfraGraph includes a local AI assistant powered by [Ollama](https://ollama.com/) — no API keys or cloud services needed.
+
+### How It Works
+
+1. `docker compose up` starts Ollama alongside the app and auto-pulls `tinyllama`
+2. Open the `/ai` page for general cloud Q&A, or click the AI button on the canvas toolbar
+3. On the canvas, the AI receives your parsed infrastructure as context — ask about security, costs, architecture, and best practices
+
+### Without Docker
+
+If running without Docker, install Ollama separately:
+
+```bash
+brew install ollama        # macOS
+ollama serve               # start the server
+ollama pull tinyllama      # download the default model (~637MB)
+```
+
+### Chat API
+
+```bash
+curl -X POST http://localhost:3001/api/ai/chat \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"role": "user", "content": "What are AWS VPC best practices?"}]}'
+```
+
+With infrastructure context:
+
+```bash
+curl -X POST http://localhost:3001/api/ai/chat \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"role": "user", "content": "Review my infrastructure"}], "resources": [...]}'
+```
+
+> **Note:** The default model (`tinyllama`) is lightweight and fast but limited. For better results, set `OLLAMA_DEFAULT_MODEL=llama3` or any Ollama-supported model.
 
 ## License
 

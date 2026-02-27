@@ -22,11 +22,16 @@ const config: Config = {
       },
       animation: {
         gradient: 'gradient 8s ease infinite',
+        'slide-in': 'slideIn 0.18s ease-out',
       },
       keyframes: {
         gradient: {
           '0%, 100%': { backgroundPosition: '0% 50%' },
           '50%': { backgroundPosition: '100% 50%' },
+        },
+        slideIn: {
+          '0%': { transform: 'translateX(20px)', opacity: '0' },
+          '100%': { transform: 'translateX(0)', opacity: '1' },
         },
       },
     },

@@ -6,6 +6,7 @@ import { parseRouter } from './routes/parse.js';
 import { sessionsRouter } from './routes/sessions.js';
 import { userRouter } from './routes/user.js';
 import { githubRouter } from './routes/github.js';
+import { aiRouter } from './routes/ai.js';
 import { swaggerSpec } from './swagger.js';
 import { optionalAuth } from './middleware/auth.js';
 
@@ -27,6 +28,7 @@ app.use('/api', parseRouter);
 app.use('/api', sessionsRouter);
 app.use('/api', userRouter);
 app.use('/api', githubRouter);
+app.use('/api', aiRouter);
 
 // Global error handler — catches unhandled errors from middleware and async routes
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

@@ -15,6 +15,7 @@ import { runSecurityScan, SEVERITY_CONFIG } from '@/lib/securityRules';
 import { relayoutNodes, LAYOUT_OPTIONS, type LayoutMode } from '@/lib/layoutEngine';
 import { estimateCosts, totalMonthlyCost, formatCost } from '@/lib/costEstimator';
 import { CostPanel } from '@/components/CostPanel';
+import { AiChatPanel } from '@/components/AiChatPanel';
 import { parseFile, parseHcl, parseCfn, parsePlan, saveSession } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import { useDarkMode } from '@/lib/useDarkMode';
@@ -57,6 +58,7 @@ export function HomePage() {
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('hierarchical');
   const [showLayoutMenu, setShowLayoutMenu] = useState(false);
   const [showCosts, setShowCosts] = useState(false);
+  const [showAi, setShowAi] = useState(false);
   const [showMinimap, setShowMinimap] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchBarRef = useRef<SearchBarHandle>(null);
@@ -502,7 +504,7 @@ export function HomePage() {
               <div className="flex items-center gap-1.5 shrink-0">
               {/* Security scan button */}
               <button
-                onClick={() => { setShowSecurity((v) => !v); if (!showSecurity) setState((prev) => prev.view === 'canvas' ? { ...prev, selectedNodeId: null } : prev); }}
+                onClick={() => { setShowSecurity((v) => !v); if (!showSecurity) { setShowAi(false); setState((prev) => prev.view === 'canvas' ? { ...prev, selectedNodeId: null } : prev); } }}
                 className={`flex items-center gap-1.5 rounded-lg backdrop-blur-sm border px-3 py-1.5 shadow-sm text-xs transition-colors ${
                   showSecurity
                     ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300'
@@ -538,6 +540,21 @@ export function HomePage() {
                     {formatCost(costTotal)}/mo
                   </span>
                 )}
+              </button>
+              {/* AI assistant toggle */}
+              <button
+                onClick={() => { setShowAi((v) => !v); if (!showAi) { setShowSecurity(false); setState((prev) => prev.view === 'canvas' ? { ...prev, selectedNodeId: null } : prev); } }}
+                className={`flex items-center gap-1.5 rounded-lg backdrop-blur-sm border px-3 py-1.5 shadow-sm text-xs transition-colors ${
+                  showAi
+                    ? 'bg-violet-50 dark:bg-violet-950/40 border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300'
+                    : 'bg-white/90 dark:bg-slate-800/90 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:border-slate-300'
+                }`}
+                title="AI Assistant"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+                </svg>
+                <span className="hidden xl:inline">AI</span>
               </button>
               {/* View toggle: shows "Table" in graph mode, "Graph" in table mode */}
               <button
@@ -792,6 +809,13 @@ export function HomePage() {
                   );
                 }}
                 onClose={() => setShowSecurity(false)}
+              />
+            </div>
+          ) : showAi ? (
+            <div className="w-72 xl:w-80 border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 pt-16 overflow-y-auto shadow-sm shrink-0 animate-slide-in">
+              <AiChatPanel
+                resources={state.data.resources}
+                onClose={() => setShowAi(false)}
               />
             </div>
           ) : selectedResource ? (
