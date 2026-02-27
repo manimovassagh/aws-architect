@@ -237,6 +237,43 @@ export interface GitHubTokenResponse {
   avatar_url: string;
 }
 
+// ─── AI Chat ─────────────────────────────────────────────────────────────────
+
+export interface AiChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export interface AiChatRequest {
+  messages: AiChatMessage[];
+  resources?: CloudResource[];
+  model?: string;
+  stream?: boolean;
+}
+
+export interface AiChatResponse {
+  message: AiChatMessage;
+  model: string;
+  durationMs: number;
+}
+
+export interface AiStatusResponse {
+  available: boolean;
+  model: string;
+  modelLoaded: boolean;
+  error?: string;
+}
+
+export interface AiModelInfo {
+  name: string;
+  size: number;
+  modifiedAt: string;
+}
+
+export interface AiModelsResponse {
+  models: AiModelInfo[];
+}
+
 // ─── Provider Configuration (contract each provider implements) ──────────────
 
 export interface ContainerTypeConfig {
