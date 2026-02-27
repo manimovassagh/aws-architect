@@ -91,6 +91,11 @@ const searchIndex: SearchEntry[] = [
   { section: 'features', title: 'Export Options', text: 'Export diagrams as PNG image or standalone interactive HTML file. HTML export creates a self-contained file that opens in any browser with full pan, zoom, and click-to-inspect functionality.' },
   { section: 'features', title: 'Sensitive Value Masking', text: 'Passwords, API keys, and tokens are automatically masked in the detail panel. Click the lock icon to reveal or hide sensitive values. Masking resets when switching resources.' },
   { section: 'features', title: 'Session History', text: 'Auto-saves diagrams for signed-in users. Browse saved sessions on the History page with provider, filename, resource count, and timestamp. Click to reload any previous diagram.' },
+  { section: 'features', title: 'AI Infrastructure Advisor', text: 'Local Ollama-powered AI chat that analyzes your infrastructure. Ask about architecture, security, costs, and best practices. Works on the canvas with full infrastructure context or on the standalone /ai page for general cloud Q&A. No API keys needed — runs locally via Docker.' },
+  // API - AI
+  { section: 'api', title: 'GET /api/ai/status', text: 'Check Ollama availability and whether the default model is loaded. Always returns 200 with errors embedded in the response body.' },
+  { section: 'api', title: 'GET /api/ai/models', text: 'List all available Ollama models with name, size, and last modified date.' },
+  { section: 'api', title: 'POST /api/ai/chat', text: 'Send chat messages to the AI assistant. Optionally include resources array for infrastructure-aware responses. Returns assistant message with model name and duration.' },
   // Keyboard
   { section: 'keyboard', title: 'Keyboard Shortcuts', text: 'Cmd+K focus search bar. Escape clear search deselect node. ? toggle keyboard shortcuts help. Scroll zoom. Click drag pan canvas.' },
   { section: 'keyboard', title: 'Canvas Controls', text: 'Zoom in out. Fit view auto-fit all nodes. Toggle interactivity lock unlock panning zooming. Minimap overview.' },
@@ -938,6 +943,45 @@ terraform show -json tfplan > plan.json
           just won&#39;t be persisted.
         </p>
       </div>
+
+      {/* ── AI Infrastructure Advisor ── */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-500/10">
+            <svg className="w-4 h-4 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+            </svg>
+          </span>
+          <h2 className="text-xl font-semibold">AI Infrastructure Advisor</h2>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          A local LLM-powered assistant that analyzes your parsed infrastructure and answers questions about
+          architecture, security, costs, and best practices — powered by <strong className="text-slate-700 dark:text-slate-300">Ollama</strong>, no API keys or cloud services required.
+        </p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {[
+            { title: 'Canvas Integration', desc: 'Click the AI button in the canvas toolbar. The assistant receives your full infrastructure as context — ask about specific resources, relationships, or patterns.' },
+            { title: 'Standalone Page', desc: 'Visit /ai for general cloud Q&A without loading infrastructure first. Great for learning best practices or exploring concepts.' },
+            { title: 'Fully Dockerized', desc: 'docker compose up starts Ollama alongside the app and auto-pulls the tinyllama model. No separate install needed.' },
+            { title: 'Swappable Models', desc: 'Default model is tinyllama (~637MB). Set OLLAMA_DEFAULT_MODEL to llama3, mistral, or any Ollama-supported model for better results.' },
+          ].map((item) => (
+            <div key={item.title} className="p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+              <p className="text-sm font-medium text-slate-900 dark:text-white">{item.title}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+        <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            <strong className="text-slate-700 dark:text-slate-300">Example prompts:</strong>{' '}
+            &quot;Are there any security issues with my VPC setup?&quot; · &quot;How can I reduce costs?&quot; · &quot;Explain the architecture of this infrastructure&quot; · &quot;What are best practices for my S3 buckets?&quot;
+          </p>
+        </div>
+        <p className="text-xs text-slate-400 dark:text-slate-500">
+          Sensitive values (passwords, API keys, tokens) are automatically stripped from the context sent to the AI.
+          Resource data stays local — nothing is sent to external services.
+        </p>
+      </div>
     </div>
   );
 }
@@ -1501,6 +1545,71 @@ curl -X POST http://localhost:3001/api/parse/plan \\
           <p className="text-xs text-slate-400 dark:text-slate-500">
             Same response format as <code className="text-xs font-mono">/api/parse</code> — nodes, edges, resources, provider, warnings.
           </p>
+        </div>
+      </div>
+
+      {/* Divider: AI */}
+      <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+        <h2 className="text-lg font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-xs mb-6">AI Assistant</h2>
+      </div>
+
+      {/* GET /api/ai/status */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="px-2 py-1 rounded text-xs font-bold bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400">
+            GET
+          </span>
+          <code className="text-sm font-mono font-semibold">/api/ai/status</code>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Check Ollama availability and whether the default model is loaded.
+          Always returns <code className="text-xs font-mono">200</code> — errors are embedded in the response body
+          (distinguishes &quot;Ollama down&quot; from &quot;backend down&quot;).
+        </p>
+        <CodeBlock lang="json">{`{ "available": true, "model": "tinyllama", "modelLoaded": true }`}</CodeBlock>
+      </div>
+
+      {/* GET /api/ai/models */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="px-2 py-1 rounded text-xs font-bold bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400">
+            GET
+          </span>
+          <code className="text-sm font-mono font-semibold">/api/ai/models</code>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          List all available Ollama models with name, size, and modification date.
+        </p>
+        <CodeBlock lang="json">{`{ "models": [{ "name": "tinyllama:latest", "size": 637000000, "modifiedAt": "..." }] }`}</CodeBlock>
+      </div>
+
+      {/* POST /api/ai/chat */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="px-2 py-1 rounded text-xs font-bold bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
+            POST
+          </span>
+          <code className="text-sm font-mono font-semibold">/api/ai/chat</code>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Send chat messages to the AI assistant. Optionally include a <code className="text-xs font-mono">resources</code> array
+          for infrastructure-aware responses. Sensitive attributes are automatically stripped.
+        </p>
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Request</p>
+          <CodeBlock lang="json">{`{
+  "messages": [{ "role": "user", "content": "Review my infrastructure" }],
+  "resources": [...],  // optional — parsed CloudResource[]
+  "model": "tinyllama" // optional — override default model
+}`}</CodeBlock>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Response</p>
+          <CodeBlock lang="json">{`{
+  "message": { "role": "assistant", "content": "Your infrastructure looks..." },
+  "model": "tinyllama",
+  "durationMs": 1234
+}`}</CodeBlock>
         </div>
       </div>
 
