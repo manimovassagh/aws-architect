@@ -4,11 +4,12 @@ import { UserMenu } from './UserMenu';
 import { useDarkMode } from '@/lib/useDarkMode';
 import { GITHUB_ICON_PATH } from '@/lib/constants';
 
-type Section = 'overview' | 'quickstart' | 'github' | 'providers' | 'api' | 'keyboard';
+type Section = 'overview' | 'quickstart' | 'features' | 'github' | 'providers' | 'api' | 'keyboard';
 
 const sections: { id: Section; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'quickstart', label: 'Quick Start' },
+  { id: 'features', label: 'Features' },
   { id: 'github', label: 'GitHub Integration' },
   { id: 'providers', label: 'Providers' },
   { id: 'api', label: 'API Reference' },
@@ -53,7 +54,7 @@ const searchIndex: SearchEntry[] = [
   // Overview
   { section: 'overview', title: 'What is InfraGraph?', text: 'InfraGraph is an open-source infrastructure visualization platform that transforms Terraform, CloudFormation, and CDK code into interactive architecture diagrams. Multi-cloud support for AWS Azure GCP. Connect GitHub repos, upload files, or call the API.' },
   { section: 'overview', title: 'Use Cases', text: 'Architecture reviews, onboarding, compliance audits, CI/CD pipeline integration, documentation generation, infrastructure drift detection, team collaboration.' },
-  { section: 'overview', title: 'Features', text: 'Multi-IaC support Terraform CloudFormation CDK, multi-cloud auto-detection, nested container layout VPC Subnet, GitHub repo scanning, private repo access, session history, export PNG SVG, search filter resources, dark mode.' },
+  { section: 'overview', title: 'Features', text: 'Multi-IaC support Terraform CloudFormation CDK, multi-cloud auto-detection, nested container layout VPC Subnet, GitHub repo scanning, blast radius analysis, cost estimation, security scanner, table view, layout algorithms, terraform plan visualization, export PNG HTML, sensitive value masking, session history, dark mode.' },
   // Quick Start
   { section: 'quickstart', title: 'Upload your IaC file', text: 'Drop a .tfstate, .tf, .yaml, .json, or .template file onto the upload zone, or click to browse. InfraGraph auto-detects the cloud provider and IaC tool. Supported formats: Terraform state files, HCL configuration files, CloudFormation templates, CDK-synthesized templates.' },
   { section: 'quickstart', title: 'Parse and visualize', text: 'Click Parse to send the file to the backend. InfraGraph extracts resources, resolves relationships and dependencies, and builds a nested graph with VPCs, subnets laid out automatically.' },
@@ -72,18 +73,30 @@ const searchIndex: SearchEntry[] = [
   { section: 'api', title: 'POST /api/parse/raw', text: 'Parse raw tfstate JSON string from request body. Ideal for programmatic access and CI/CD pipelines.' },
   { section: 'api', title: 'POST /api/parse/cfn', text: 'Parse a CloudFormation or CDK template upload via multipart form. Supports JSON and YAML. Add ?source=cdk to tag CDK-synthesized templates.' },
   { section: 'api', title: 'POST /api/parse/cfn/raw', text: 'Parse raw CloudFormation or CDK template JSON/YAML from request body. Ideal for programmatic access.' },
+  { section: 'api', title: 'POST /api/parse/plan', text: 'Parse a Terraform plan JSON file upload. Returns graph data with plan actions (create, update, delete, replace, read, no-op) for diff visualization.' },
+  { section: 'api', title: 'POST /api/parse/plan/raw', text: 'Parse raw Terraform plan JSON from request body. Ideal for CI/CD pipelines to visualize changes before applying.' },
   { section: 'api', title: 'POST /api/github/token', text: 'Exchange GitHub OAuth authorization code for access token. Returns token username and avatar.' },
   { section: 'api', title: 'GET /api/github/repos', text: 'List authenticated user repositories including private repos. Requires X-GitHub-Token header.' },
   { section: 'api', title: 'POST /api/github/scan', text: 'Scan a GitHub repository for directories containing IaC files (.tf). Returns list of projects with file counts.' },
   { section: 'api', title: 'POST /api/github/parse', text: 'Parse an IaC project directly from GitHub repo. Fetches .tf files and returns graph data. Supports private repos with token.' },
   { section: 'api', title: 'GET /health', text: 'Health check endpoint. Returns status ok and version.' },
   { section: 'api', title: 'Authentication', text: 'GitHub token passed via X-GitHub-Token header. Optional for public repos, required for private repos. Increases rate limit from 60 to 5000 requests per hour.' },
+  // Features
+  { section: 'features', title: 'Blast Radius Analysis', text: 'Visualize the impact zone of any resource. Shows all transitively connected nodes with depth-based color coding. Red for root, orange for depth 1, yellow for depth 2, green for depth 3+. Dimming on unaffected resources.' },
+  { section: 'features', title: 'Cost Estimation', text: 'Approximate monthly cost breakdown by resource. Shows total estimate and per-resource costs sorted by price. Supports AWS, Azure, and GCP pricing. Disclaimer about approximate values.' },
+  { section: 'features', title: 'Security Scanner', text: 'Scan infrastructure for security issues. Checks for public S3 buckets, exposed security groups, unencrypted databases, public IPs. Severity levels: critical, high, medium, low, info. Click to navigate to affected resource.' },
+  { section: 'features', title: 'Table View', text: 'Sortable inventory table with columns for name, type, region, connections, and cost. Click rows to select resources. Toggle between graph and table views in the toolbar.' },
+  { section: 'features', title: 'Layout Algorithms', text: 'Three layout modes: Top-Down hierarchical (default), Left-to-Right horizontal, and Flat Grid. Switch layouts from the toolbar dropdown. Layouts preserve container nesting in hierarchical and left-to-right modes.' },
+  { section: 'features', title: 'Terraform Plan Visualization', text: 'Upload terraform plan JSON to see color-coded diff visualization. Green for create, blue for update, red for delete, amber for replace, violet for read. Plan Changes legend shows action summary.' },
+  { section: 'features', title: 'Export Options', text: 'Export diagrams as PNG image or standalone interactive HTML file. HTML export creates a self-contained file that opens in any browser with full pan, zoom, and click-to-inspect functionality.' },
+  { section: 'features', title: 'Sensitive Value Masking', text: 'Passwords, API keys, and tokens are automatically masked in the detail panel. Click the lock icon to reveal or hide sensitive values. Masking resets when switching resources.' },
+  { section: 'features', title: 'Session History', text: 'Auto-saves diagrams for signed-in users. Browse saved sessions on the History page with provider, filename, resource count, and timestamp. Click to reload any previous diagram.' },
   // Keyboard
   { section: 'keyboard', title: 'Keyboard Shortcuts', text: 'Cmd+K focus search bar. Escape clear search deselect node. ? toggle keyboard shortcuts help. Scroll zoom. Click drag pan canvas.' },
   { section: 'keyboard', title: 'Canvas Controls', text: 'Zoom in out. Fit view auto-fit all nodes. Toggle interactivity lock unlock panning zooming. Minimap overview.' },
 ];
 
-const docsSections: Section[] = ['overview', 'quickstart', 'github', 'providers', 'keyboard'];
+const docsSections: Section[] = ['overview', 'quickstart', 'features', 'github', 'providers', 'keyboard'];
 
 export function DocsPage() {
   const location = useLocation();
@@ -262,6 +275,7 @@ export function DocsPage() {
               <>
                 {active === 'overview' && <OverviewSection onNavigate={setActive} />}
                 {active === 'quickstart' && <QuickStartSection />}
+                {active === 'features' && <FeaturesSection />}
                 {active === 'github' && <GitHubSection />}
                 {active === 'providers' && <ProvidersSection />}
                 {active === 'keyboard' && <KeyboardSection dark={dark} />}
@@ -291,6 +305,7 @@ function highlightMatch(text: string, query: string): React.ReactNode {
 const sectionLabels: Record<Section, string> = {
   overview: 'Overview',
   quickstart: 'Quick Start',
+  features: 'Features',
   github: 'GitHub Integration',
   providers: 'Providers',
   api: 'API Reference',
@@ -419,7 +434,7 @@ function OverviewSection({ onNavigate }: { onNavigate: (s: Section) => void }) {
           {[
             { step: '1', title: 'Provide Your IaC', desc: 'Upload a Terraform, CloudFormation, or CDK file — or connect a GitHub repo.' },
             { step: '2', title: 'Parse & Analyze', desc: 'InfraGraph extracts resources, resolves dependencies, and detects the cloud provider.' },
-            { step: '3', title: 'Visualize', desc: 'Interactive diagram with nested containers, searchable resources, and export to PNG.' },
+            { step: '3', title: 'Visualize & Analyze', desc: 'Interactive diagram with blast radius, cost estimation, security scanning, multiple layouts, and export.' },
           ].map((item) => (
             <div key={item.step} className="flex gap-3">
               <span className="flex items-center justify-center w-7 h-7 rounded-full bg-violet-600 text-white text-sm font-bold shrink-0">{item.step}</span>
@@ -456,12 +471,18 @@ function OverviewSection({ onNavigate }: { onNavigate: (s: Section) => void }) {
       </div>
 
       {/* Quick links */}
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <button
           onClick={() => onNavigate('quickstart')}
           className="p-4 rounded-xl border text-left transition-colors border-violet-200 dark:border-violet-500/20 bg-violet-50 dark:bg-violet-500/5 hover:bg-violet-100 dark:hover:bg-violet-500/10"
         >
           <p className="font-semibold text-sm text-violet-700 dark:text-violet-300">Quick Start Guide &rarr;</p>
+        </button>
+        <button
+          onClick={() => onNavigate('features')}
+          className="p-4 rounded-xl border text-left transition-colors border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+        >
+          <p className="font-semibold text-sm text-slate-900 dark:text-white">Features &rarr;</p>
         </button>
         <button
           onClick={() => onNavigate('github')}
@@ -574,7 +595,15 @@ function QuickStartSection() {
           </li>
           <li className="flex items-start gap-2">
             <span className="text-violet-500 mt-0.5">&#9679;</span>
-            <span><strong className="text-slate-700 dark:text-slate-300">Export</strong> the diagram as PNG for documentation</span>
+            <span><strong className="text-slate-700 dark:text-slate-300">Analyze</strong> blast radius, costs, and security issues from the toolbar</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-violet-500 mt-0.5">&#9679;</span>
+            <span><strong className="text-slate-700 dark:text-slate-300">Switch views</strong> between graph and table, or change layout algorithms</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-violet-500 mt-0.5">&#9679;</span>
+            <span><strong className="text-slate-700 dark:text-slate-300">Export</strong> as PNG image or interactive HTML file</span>
           </li>
         </ul>
       </div>
@@ -601,6 +630,312 @@ function QuickStartSection() {
           Don&#39;t have an IaC file handy? Use the sample buttons on the{' '}
           <Link to="/" className="underline hover:no-underline">home page</Link> to load
           a pre-built AWS, Azure, GCP, or CloudFormation infrastructure.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Features Section ─────────────────────────────────────────────── */
+
+function FeaturesSection() {
+  return (
+    <div className="space-y-10">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Features</h1>
+        <p className="mt-3 text-lg text-slate-500 dark:text-slate-400">
+          InfraGraph goes beyond visualization — analyze blast radius, estimate costs, scan for security issues,
+          and export interactive diagrams.
+        </p>
+      </div>
+
+      {/* ── Blast Radius ── */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 dark:bg-red-500/10">
+            <svg className="w-4 h-4 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+          </span>
+          <h2 className="text-xl font-semibold">Blast Radius Analysis</h2>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Select any resource and click <strong className="text-slate-700 dark:text-slate-300">Blast Radius</strong> in the detail panel
+          to visualize its impact zone. InfraGraph traces all transitive dependencies and highlights affected resources
+          with depth-based color coding:
+        </p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {[
+            { color: '#EF4444', label: 'Root', desc: 'The selected resource (depth 0)' },
+            { color: '#F97316', label: 'Depth 1', desc: 'Directly connected resources' },
+            { color: '#EAB308', label: 'Depth 2', desc: 'Two hops away' },
+            { color: '#22C55E', label: 'Depth 3+', desc: 'Indirectly affected resources' },
+          ].map((tier) => (
+            <div key={tier.label} className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+              <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: tier.color }} />
+              <div>
+                <p className="text-sm font-medium text-slate-900 dark:text-white">{tier.label}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{tier.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-slate-400 dark:text-slate-500">
+          Unaffected resources are dimmed so you can focus on the impact zone. The detail panel shows the total count of affected resources.
+        </p>
+      </div>
+
+      {/* ── Cost Estimation ── */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-500/10">
+            <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </span>
+          <h2 className="text-xl font-semibold">Cost Estimation</h2>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Click the <strong className="text-slate-700 dark:text-slate-300">Costs</strong> button in the toolbar to see an approximate monthly cost
+          breakdown. The panel shows a total estimate and per-resource costs, sorted from most to least expensive.
+        </p>
+        <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            <strong className="text-slate-700 dark:text-slate-300">Supported providers:</strong> AWS, Azure, and GCP.
+            Pricing is based on on-demand rates for the detected region and instance type. Estimates are approximate
+            and intended for planning purposes only.
+          </p>
+        </div>
+      </div>
+
+      {/* ── Security Scanner ── */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-500/10">
+            <svg className="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+            </svg>
+          </span>
+          <h2 className="text-xl font-semibold">Security Scanner</h2>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Click the security badge in the toolbar to scan your infrastructure for common security issues.
+          InfraGraph checks resources against built-in rules and reports findings grouped by severity.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead>
+              <tr className="border-b border-slate-200 dark:border-slate-700">
+                <th className="py-2 pr-4 font-semibold text-slate-700 dark:text-slate-300">Severity</th>
+                <th className="py-2 font-semibold text-slate-700 dark:text-slate-300">Example checks</th>
+              </tr>
+            </thead>
+            <tbody className="text-slate-500 dark:text-slate-400">
+              <tr className="border-b border-slate-100 dark:border-slate-800">
+                <td className="py-2 pr-4"><Badge color="#EF4444">Critical</Badge></td>
+                <td className="py-2">Publicly accessible databases, wildcard IAM policies</td>
+              </tr>
+              <tr className="border-b border-slate-100 dark:border-slate-800">
+                <td className="py-2 pr-4"><Badge color="#F97316">High</Badge></td>
+                <td className="py-2">Unencrypted RDS instances, public S3 buckets</td>
+              </tr>
+              <tr className="border-b border-slate-100 dark:border-slate-800">
+                <td className="py-2 pr-4"><Badge color="#EAB308">Medium</Badge></td>
+                <td className="py-2">Security groups allowing 0.0.0.0/0, missing encryption</td>
+              </tr>
+              <tr>
+                <td className="py-2 pr-4"><Badge color="#3B82F6">Low / Info</Badge></td>
+                <td className="py-2">Missing tags, non-standard naming conventions</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-slate-400 dark:text-slate-500">
+          Click any finding to navigate directly to the affected resource on the canvas.
+        </p>
+      </div>
+
+      {/* ── Table View ── */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-500/10">
+            <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M13.125 12h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M20.625 12c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5M12 14.625v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 14.625c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 0v1.5c0 .621-.504 1.125-1.125 1.125" />
+            </svg>
+          </span>
+          <h2 className="text-xl font-semibold">Table View</h2>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Click <strong className="text-slate-700 dark:text-slate-300">Table</strong> in the toolbar to switch from the graph canvas to
+          a sortable inventory table. Columns include name, type, region, number of connections, and estimated monthly cost.
+        </p>
+        <ul className="text-sm text-slate-500 dark:text-slate-400 space-y-1.5 ml-4">
+          <li className="flex items-start gap-2">
+            <span className="text-violet-500 shrink-0 mt-0.5">&#9679;</span>
+            <span>Click any column header to sort ascending or descending</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-violet-500 shrink-0 mt-0.5">&#9679;</span>
+            <span>Click a row to select the resource and view its details</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-violet-500 shrink-0 mt-0.5">&#9679;</span>
+            <span>Toggle back to graph view at any time using the same button</span>
+          </li>
+        </ul>
+      </div>
+
+      {/* ── Layout Algorithms ── */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-violet-100 dark:bg-violet-500/10">
+            <svg className="w-4 h-4 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+            </svg>
+          </span>
+          <h2 className="text-xl font-semibold">Layout Algorithms</h2>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Use the layout dropdown in the toolbar to switch between three layout modes:
+        </p>
+        <div className="grid sm:grid-cols-3 gap-3">
+          {[
+            { title: 'Top-Down', desc: 'Default hierarchical layout. VPCs at top, subnets and resources nested below.' },
+            { title: 'Left-to-Right', desc: 'Horizontal layout. Containers flow left to right — great for wide diagrams.' },
+            { title: 'Flat Grid', desc: 'Strips container nesting and arranges all resources in a clean grid.' },
+          ].map((layout) => (
+            <div key={layout.title} className="p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+              <p className="text-sm font-medium text-slate-900 dark:text-white">{layout.title}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{layout.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Terraform Plan Visualization ── */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-cyan-100 dark:bg-cyan-500/10">
+            <svg className="w-4 h-4 text-cyan-600 dark:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+            </svg>
+          </span>
+          <h2 className="text-xl font-semibold">Terraform Plan Visualization</h2>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Upload a Terraform plan JSON file (<code className="text-xs font-mono">terraform show -json tfplan &gt; plan.json</code>)
+          to see a color-coded diff of what will change in your infrastructure.
+        </p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {[
+            { color: '#22C55E', action: 'Create', desc: 'New resources to be added' },
+            { color: '#3B82F6', action: 'Update', desc: 'Existing resources modified in place' },
+            { color: '#EF4444', action: 'Delete', desc: 'Resources to be destroyed' },
+            { color: '#F59E0B', action: 'Replace', desc: 'Destroy and recreate (tainted)' },
+            { color: '#8B5CF6', action: 'Read', desc: 'Data sources to be refreshed' },
+            { color: '#6B7280', action: 'No-op', desc: 'Unchanged resources' },
+          ].map((item) => (
+            <div key={item.action} className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+              <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+              <div>
+                <p className="text-sm font-medium text-slate-900 dark:text-white">{item.action}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">How to generate a plan JSON</p>
+          <CodeBlock lang="bash">{`terraform plan -out=tfplan
+terraform show -json tfplan > plan.json
+# Upload plan.json to InfraGraph`}</CodeBlock>
+        </div>
+      </div>
+
+      {/* ── Export Options ── */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-500/10">
+            <svg className="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+          </span>
+          <h2 className="text-xl font-semibold">Export Options</h2>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Click the <strong className="text-slate-700 dark:text-slate-300">Export</strong> dropdown in the toolbar to download your diagram:
+        </p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+            <p className="text-sm font-medium text-slate-900 dark:text-white">PNG Image</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Static image of the current viewport. Perfect for documentation, wikis, and presentations.
+            </p>
+          </div>
+          <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+            <p className="text-sm font-medium text-slate-900 dark:text-white">Interactive HTML</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Self-contained HTML file with full interactivity — pan, zoom, and click nodes to inspect details.
+              Opens in any browser, no server needed.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Sensitive Value Masking ── */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700">
+            <svg className="w-4 h-4 text-slate-600 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+            </svg>
+          </span>
+          <h2 className="text-xl font-semibold">Sensitive Value Masking</h2>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Passwords, API keys, and other sensitive attributes are automatically masked in the detail panel.
+          Values appear as <code className="text-xs font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;</code> by
+          default.
+        </p>
+        <ul className="text-sm text-slate-500 dark:text-slate-400 space-y-1.5 ml-4">
+          <li className="flex items-start gap-2">
+            <span className="text-green-500 shrink-0">&#10003;</span>
+            <span>Click the lock icon next to any masked value to reveal it</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-green-500 shrink-0">&#10003;</span>
+            <span>Click again to re-mask the value</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-green-500 shrink-0">&#10003;</span>
+            <span>All values are re-masked automatically when you select a different resource</span>
+          </li>
+        </ul>
+      </div>
+
+      {/* ── Session History ── */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-500/10">
+            <svg className="w-4 h-4 text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </span>
+          <h2 className="text-xl font-semibold">Session History</h2>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          When signed in with Google, InfraGraph automatically saves every diagram you parse.
+          Visit the <strong className="text-slate-700 dark:text-slate-300">History</strong> page to browse, reload, or delete past sessions.
+        </p>
+        <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Each saved session includes the cloud provider, filename, resource count, and timestamp.
+            Click any session to reload the full diagram with all nodes, edges, and layout.
+          </p>
+        </div>
+        <p className="text-xs text-slate-400 dark:text-slate-500">
+          Session history requires Google sign-in via Supabase. InfraGraph works fully in guest mode without sign-in — sessions
+          just won&#39;t be persisted.
         </p>
       </div>
     </div>
@@ -994,6 +1329,44 @@ curl -X POST "http://localhost:3001/api/parse/cfn?source=cdk" \\
   -d '{"template": "<your-cfn-template-string>"}'`}</CodeBlock>
       </div>
 
+      {/* POST /api/parse/plan */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="px-2 py-1 rounded text-xs font-bold bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400">
+            POST
+          </span>
+          <code className="text-sm font-mono font-semibold">/api/parse/plan</code>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Parse a Terraform plan JSON file via multipart upload. Returns graph data with plan actions
+          (create, update, delete, replace, read, no-op) attached to each resource node.
+        </p>
+        <CodeBlock lang="bash">{`# Generate plan JSON from Terraform
+terraform plan -out=tfplan
+terraform show -json tfplan > plan.json
+
+# Upload to InfraGraph
+curl -X POST http://localhost:3001/api/parse/plan \\
+  -F "plan=@plan.json"`}</CodeBlock>
+      </div>
+
+      {/* POST /api/parse/plan/raw */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="px-2 py-1 rounded text-xs font-bold bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400">
+            POST
+          </span>
+          <code className="text-sm font-mono font-semibold">/api/parse/plan/raw</code>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Parse raw Terraform plan JSON from the request body. Ideal for CI/CD pipelines
+          that want to visualize infrastructure changes before applying.
+        </p>
+        <CodeBlock lang="bash">{`curl -X POST http://localhost:3001/api/parse/plan/raw \\
+  -H "Content-Type: application/json" \\
+  -d '{"plan": "<your-plan-json-string>"}'`}</CodeBlock>
+      </div>
+
       {/* Divider: GitHub Endpoints */}
       <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
         <h2 className="text-lg font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-xs mb-6">GitHub Endpoints</h2>
@@ -1239,8 +1612,9 @@ function KeyboardSection({ dark }: { dark: boolean }) {
       <div className="space-y-3">
         <h2 className="text-xl font-semibold">Minimap</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          The bottom-right minimap shows an overview of the entire graph. Click anywhere on
-          the minimap to jump to that area.
+          Click <strong className="text-slate-700 dark:text-slate-300">Show minimap</strong> in the toolbar to toggle the minimap overlay.
+          The minimap shows an overview of the entire graph in the bottom-right corner — click anywhere on
+          it to jump to that area. Provider-branded colors make each resource type easy to identify.
         </p>
       </div>
     </div>
